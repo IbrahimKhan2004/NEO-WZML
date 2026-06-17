@@ -57,8 +57,11 @@ class Config:
     MEGA_EMAIL = ""
     MEGA_PASSWORD = ""
     MEGA_ENABLED = True
+    TERABOX_ENABLED = True
+    TERABOX_UPLOAD_PATH = ""
     DIRECT_LIMIT = 0
     MEGA_LIMIT = 0
+    TERABOX_LIMIT = 0
     TORRENT_LIMIT = 0
     GDRIVE_LIMIT = 0
     RCLONE_LIMIT = 0
@@ -185,7 +188,7 @@ class Config:
                     continue
                 if isinstance(value, str):
                     value = value.strip()
-                if attr == "DEFAULT_UPLOAD" and value != "gd":
+                if attr == "DEFAULT_UPLOAD" and value not in ("gd", "tb", "tbx"):
                     value = "rc"
                 elif attr in [
                     "BASE_URL",
@@ -241,7 +244,7 @@ class Config:
     def load_dict(cls, config_dict):
         for key, value in config_dict.items():
             if hasattr(cls, key):
-                if key == "DEFAULT_UPLOAD" and value != "gd":
+                if key == "DEFAULT_UPLOAD" and value not in ("gd", "tb", "tbx"):
                     value = "rc"
                 elif key in [
                     "BASE_URL",
@@ -262,7 +265,7 @@ class Config:
 
 
 class BinConfig:
-    ARIA2_NAME = "blitzfetcher"
-    QBIT_NAME = "stormtorrent"
-    FFMPEG_NAME = "mediaforge"
-    RCLONE_NAME = "ghostdrive"
+    ARIA2_NAME = "neoweb"
+    QBIT_NAME = "neotorrent"
+    FFMPEG_NAME = "neorender"
+    RCLONE_NAME = "neocloud"

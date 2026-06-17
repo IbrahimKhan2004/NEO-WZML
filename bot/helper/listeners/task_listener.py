@@ -56,9 +56,13 @@ from bot.helper.mirror_leech_utils.uphoster_utils.pixeldrain_utils.upload import
 from bot.helper.mirror_leech_utils.uphoster_utils.multi_upload import MultiUphosterUpload
 from bot.helper.mirror_leech_utils.gdrive_utils.upload import GoogleDriveUpload
 from bot.helper.mirror_leech_utils.rclone_utils.transfer import RcloneTransferHelper
+from bot.helper.mirror_leech_utils.upload_utils.terabox_upload import TeraboxUpload
 from bot.helper.mirror_leech_utils.status_utils.uphoster_status import UphosterStatus
 from bot.helper.mirror_leech_utils.status_utils.gdrive_status import (
     GoogleDriveStatus,
+)
+from bot.helper.mirror_leech_utils.status_utils.terabox_upload_status import (
+    TeraboxUploadStatus,
 )
 from bot.helper.mirror_leech_utils.status_utils.queue_status import QueueStatus
 from bot.helper.mirror_leech_utils.status_utils.rclone_status import RcloneStatus
@@ -103,7 +107,23 @@ class TaskListener(TaskConfig):
                 self.same_dir[self.folder_name]["tasks"].remove(self.mid)
                 self.same_dir[self.folder_name]["total"] -= 1
 
+    async def send_processing(self):
+        if self.processing_msg is not None or self.multi > 1:
+            return
+        with suppress(Exception):
+            self.processing_msg = await send_message(
+                self.message, "<b>Processing...</b>"
+            )
+
+    async def remove_processing(self):
+        msg = self.processing_msg
+        self.processing_msg = None
+        if msg and not isinstance(msg, str):
+            with suppress(Exception):
+                await delete_message(msg)
+
     async def on_download_start(self):
+        await self.remove_processing()
         mode_name = "Leech" if self.is_leech else "Mirror"
         if Config.LINKS_LOG_ID:
             dispTime = datetime.now(timezone(Config.TIMEZONE)).strftime("%d/%m/%y, %I:%M:%S %p")
@@ -507,6 +527,15 @@ class TaskListener(TaskConfig):
                 ddl.upload(),
             )
             del ddl
+        elif getattr(self, "is_terabox_upload", False):
+            tbx = TeraboxUpload(self, up_path)
+            async with task_dict_lock:
+                task_dict[self.mid] = TeraboxUploadStatus(self, tbx, gid, "up")
+            await gather(
+                update_status_message(self.message.chat.id),
+                tbx.upload(),
+            )
+            del tbx
         elif is_gdrive_id(self.up_dest):
             LOGGER.info(f"Gdrive Upload Name: {self.name}")
             drive = GoogleDriveUpload(self, up_path)
@@ -771,6 +800,7 @@ class TaskListener(TaskConfig):
         await start_from_queued()
 
     async def on_download_error(self, error, button=None, is_limit=False):
+        await self.remove_processing()
         async with task_dict_lock:
             if self.mid in task_dict:
                 del task_dict[self.mid]

@@ -22,6 +22,7 @@ from bot.helper.ext_utils.links_utils import (
     is_gdrive_id,
     is_gdrive_link,
     is_mega_link,
+    is_terabox_link,
     is_magnet,
     is_rclone_path,
     is_telegram_link,
@@ -42,9 +43,14 @@ from bot.helper.mirror_leech_utils.download_utils.direct_link_generator import (
 from bot.helper.mirror_leech_utils.download_utils.gd_download import add_gd_download
 from bot.helper.mirror_leech_utils.download_utils.jd_download import add_jd_download
 from bot.helper.mirror_leech_utils.download_utils.mega_download import add_mega_download
+from bot.helper.mirror_leech_utils.download_utils.terabox_download import (
+    add_terabox_download,
+    add_terabox_account_download,
+)
 from bot.helper.mirror_leech_utils.download_utils.qbit_download import add_qb_torrent
 from bot.helper.mirror_leech_utils.download_utils.rclone_download import (
     add_rclone_download,
+    add_rclone_web_selection,
 )
 from bot.helper.mirror_leech_utils.download_utils.telegram_download import (
     TelegramDownloadHelper,
@@ -401,6 +407,7 @@ class Mirror(TaskListener):
             and not is_gdrive_id(self.link)
             and not is_gdrive_link(self.link)
             and not is_mega_link(self.link)
+            and self.link != "tbx"
         ):
             await database.remove_shared_task(self.message.id, TgClient.ID, user_id=self.user_id)
             await send_message(
@@ -410,7 +417,7 @@ class Mirror(TaskListener):
             await delete_links(self.message)
             return
 
-        if len(self.link) > 0:
+        if len(self.link) > 0 and not is_terabox_link(self.link):
             LOGGER.info(self.link)
 
         if self.is_leech:
@@ -488,6 +495,8 @@ class Mirror(TaskListener):
             and file_ is None
             and not is_gdrive_id(self.link)
             and not is_mega_link(self.link)
+            and not is_terabox_link(self.link)
+            and not self.is_terabox_account
         ):
             content_type = await get_content_type(self.link)
             if content_type is None or re_match(r"text/html|text/plain", content_type):
@@ -517,33 +526,43 @@ class Mirror(TaskListener):
                     await delete_links(self.message)
                     return
 
-        await delete_links(self.message)
-
-        if file_ is not None:
-            await TelegramDownloadHelper(self).add_download(
-                reply_to, f"{path}/", session
-            )
-        elif isinstance(self.link, dict):
-            await add_direct_download(self, path)
-        elif self.is_jd:
-            await add_jd_download(self, path)
-        elif self.is_qbit:
-            await add_qb_torrent(self, path, ratio, seed_time)
-        elif is_rclone_path(self.link):
-            await add_rclone_download(self, f"{path}/")
-        elif is_gdrive_link(self.link) or is_gdrive_id(self.link):
-            await add_gd_download(self, path)
-        elif is_mega_link(self.link):
-            await add_mega_download(self, f"{path}/")
-        else:
-            ussr = args["-au"]
-            pssw = args["-ap"]
-            if ussr or pssw:
-                auth = f"{ussr}:{pssw}"
-                headers += (
-                    f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+        await self.send_processing()
+        try:
+            await delete_links(self.message)
+            if file_ is not None:
+                await TelegramDownloadHelper(self).add_download(
+                    reply_to, f"{path}/", session
                 )
-            await add_aria2_download(self, path, headers, ratio, seed_time)
+            elif isinstance(self.link, dict):
+                await add_direct_download(self, path)
+            elif self.is_jd:
+                await add_jd_download(self, path)
+            elif self.is_qbit:
+                await add_qb_torrent(self, path, ratio, seed_time)
+            elif is_rclone_path(self.link):
+                if getattr(self, "_rcl_web", False):
+                    await add_rclone_web_selection(self, f"{path}/")
+                else:
+                    await add_rclone_download(self, f"{path}/")
+            elif is_gdrive_link(self.link) or is_gdrive_id(self.link):
+                await add_gd_download(self, path)
+            elif is_mega_link(self.link):
+                await add_mega_download(self, f"{path}/")
+            elif self.is_terabox_account:
+                await add_terabox_account_download(self, f"{path}/")
+            elif is_terabox_link(self.link):
+                await add_terabox_download(self, f"{path}/")
+            else:
+                ussr = args["-au"]
+                pssw = args["-ap"]
+                if ussr or pssw:
+                    auth = f"{ussr}:{pssw}"
+                    headers += (
+                        f" authorization: Basic {b64encode(auth.encode()).decode('ascii')}"
+                    )
+                await add_aria2_download(self, path, headers, ratio, seed_time)
+        finally:
+            await self.remove_processing()
 
 
 async def mirror(client, message):

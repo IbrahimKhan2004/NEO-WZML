@@ -11,7 +11,7 @@ from re import findall, match, search
 from requests import Session, post, get, RequestException
 from requests.adapters import HTTPAdapter
 from time import sleep, time
-from urllib.parse import parse_qs, urlparse, quote, unquote
+from urllib.parse import parse_qs, urlparse, unquote
 from urllib3.util.retry import Retry
 from uuid import uuid4
 from base64 import b64decode, b64encode
@@ -255,28 +255,6 @@ def direct_link_generator(link):
         return streamtape(link)
     elif any(x in domain for x in ["wetransfer.com", "we.tl"]):
         return wetransfer(link)
-    elif any(
-        x in domain
-        for x in [
-            "terabox.com",
-            "nephobox.com",
-            "4funbox.com",
-            "mirrobox.com",
-            "momerybox.com",
-            "teraboxapp.com",
-            "1024tera.com",
-            "terabox.app",
-            "gibibox.com",
-            "goaibox.com",
-            "terasharelink.com",
-            "teraboxlink.com",
-            "freeterabox.com",
-            "1024terabox.com",
-            "teraboxshare.com",
-            "terafileshare.com",
-        ]
-    ):
-        return terabox(link)
     elif any(
         x in domain
         for x in [
@@ -840,15 +818,6 @@ def uploadee(url):
         return link[0]
     else:
         raise DirectDownloadLinkException("ERROR: Direct Link not found")
-
-
-def terabox(url):
-    try:
-        encoded_url = quote(url)
-        final_url = f"https://teradlrobot.cheemsbackup.workers.dev/?url={encoded_url}"
-        return final_url
-    except Exception as e:
-        raise DirectDownloadLinkException("Failed to bypass Terabox URL")
 
 
 def filepress(url):

@@ -186,6 +186,84 @@ def make_mega_tree(file_list):
     return {"files": result, "engine": "mega"}
 
 
+def make_terabox_tree(file_list):
+    parent = TorNode("TERABOX")
+    folder_id = 0
+    path_to_node = {"": parent}
+
+    folders = sorted(
+        [f for f in file_list if f["is_dir"]],
+        key=lambda x: x["path"].count("/"),
+    )
+    for f in folders:
+        full_path = f"{f['path']}".rstrip("/")
+        if full_path in path_to_node:
+            continue
+        parent_path = f["path"].rstrip("/").rsplit("/", 1)[0]
+        parent_node = path_to_node.get(parent_path, parent)
+        path_to_node[full_path] = TorNode(
+            f["name"],
+            is_folder=True,
+            parent=parent_node,
+            file_id=folder_id,
+        )
+        folder_id += 1
+
+    for f in file_list:
+        if f["is_dir"]:
+            continue
+        parent_path = f["path"].rstrip("/").rsplit("/", 1)[0]
+        parent_node = path_to_node.get(parent_path, parent)
+        TorNode(
+            f["name"],
+            is_file=True,
+            parent=parent_node,
+            size=f["size"],
+            priority=1,
+            file_id=f["id"],
+            progress=0,
+        )
+
+    result = create_list(parent)
+    return {"files": result, "engine": "terabox"}
+
+
+def make_rclone_tree(file_list):
+    parent = TorNode("RCLONE")
+    folder_id = 0
+    path_to_node = {"": parent}
+
+    for f in sorted(file_list, key=lambda x: x.get("path", "")):
+        full = (f.get("path") or "").strip("/")
+        if not full:
+            continue
+        parts = full.split("/")
+        cur = parent
+        cur_path = ""
+        for comp in parts[:-1]:
+            cur_path = f"{cur_path}/{comp}" if cur_path else comp
+            node = path_to_node.get(cur_path)
+            if node is None:
+                node = TorNode(
+                    comp, is_folder=True, parent=cur, file_id=folder_id
+                )
+                folder_id += 1
+                path_to_node[cur_path] = node
+            cur = node
+        TorNode(
+            parts[-1],
+            is_file=True,
+            parent=cur,
+            size=f.get("size", 0),
+            priority=1,
+            file_id=f.get("id", full),
+            progress=0,
+        )
+
+    result = create_list(parent)
+    return {"files": result, "engine": "rclone"}
+
+
 def create_list(parent, contents=None):
     if contents is None:
         contents = []

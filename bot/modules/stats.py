@@ -163,6 +163,7 @@ async def get_stats(event, key="home"):
  • <b>PyroTgFork:</b> {ver.get("pyroblack", "N/A")}
  • <b>Google API:</b> {ver.get("gapi", "N/A")}
  • <b>MegaSDK:</b> {ver.get("mega", "8.1.1")}
+ • <b>teraboxSDK:</b> {ver.get("terabox", "1.0.0")}
 """
     elif key == "tlimits":
         msg = BotTheme(
@@ -309,6 +310,15 @@ async def get_version_async(command, regex, timeout=5):
         return f"Exception: {str(e)}"
 
 
+def get_terabox_version():
+    try:
+        from terabox import __version__ as terabox_version
+    except Exception as e:
+        LOGGER.warning(f"Failed to fetch teraboxSDK Version: {e}")
+        return "N/A"
+    return terabox_version
+
+
 async def retry_mega_version():
     await sleep(60)
     command, regex = commands["mega"]
@@ -327,6 +337,7 @@ async def get_packages_version():
     bot_cache["eng_versions"] = {}
     for tool, ver in zip(commands.keys(), versions):
         bot_cache["eng_versions"][tool] = ver
+    bot_cache["eng_versions"]["terabox"] = get_terabox_version()
     if await aiopath.exists(".git"):
         last_commit = await cmd_exec(
             "git log -1 --date=short --pretty=format:'%cd <b>From</b> %cr'", True

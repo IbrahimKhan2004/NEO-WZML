@@ -27,6 +27,7 @@ from bot import (
     index_urls,
     intervals,
     jd_listener_lock,
+    QBIT_DEFAULT_WEB_PASSWORD,
     qbit_options,
     task_dict,
     shortener_dict,
@@ -66,7 +67,7 @@ bool_vars = [
     'DISABLE_TORRENTS', 'DISABLE_LEECH',
     'DISABLE_BULK', 'DISABLE_MULTI', 'DISABLE_SEED',
     'DISABLE_FF_MODE', 'JD_MODE',
-    'MEGA_ENABLED', 'MEDIA_STORE', 'SHOW_CLOUD_LINK',
+    'MEGA_ENABLED', 'TERABOX_ENABLED', 'MEDIA_STORE', 'SHOW_CLOUD_LINK',
     'UPDATE_PKGS', 'AUTO_UPDATE',
 ]
 
@@ -230,13 +231,14 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False, message=None):
                     "list_drives.txt",
                     "shortener.txt",
                     "cookies.txt",
+                    "terabox.txt",
                     ".netrc",
                 ]
             ]
         )
         msg = f"""<u>Send any of these private files:</u>
 
-<code>config.py, token.pickle, rclone.conf, accounts.zip, list_drives.txt, shortener.txt, cookies.txt, .netrc or any other file!</code>
+<code>config.py, token.pickle, rclone.conf, accounts.zip, list_drives.txt, shortener.txt, cookies.txt, terabox.txt, .netrc or any other file!</code>
 
  • {txt}
 
@@ -488,7 +490,13 @@ async def edit_aria(_, message, pre_message, key):
 async def edit_qbit(_, message, pre_message, key):
     handler_dict[message.chat.id] = False
     value = message.text
-    if value.lower() == "true":
+    if key == "web_ui_password":
+        value = QBIT_DEFAULT_WEB_PASSWORD
+        await send_message(
+            message,
+            "qBittorrent WebUI password is managed by startup and set to adminadmin.",
+        )
+    elif value.lower() == "true":
         value = True
     elif value.lower() == "false":
         value = False
@@ -778,6 +786,11 @@ async def edit_bot_settings(client, query):
     elif data[1] == "emptyqbit":
         handler_dict[chat_id] = False
         await query.answer()
+        if data[2] == "web_ui_password":
+            return await query.answer(
+                "qBittorrent WebUI password is managed by startup and cannot be emptied.",
+                show_alert=True,
+            )
         await TorrentManager.qbittorrent.app.set_preferences({data[2]: ""})
         qbit_options[data[2]] = ""
         await update_buttons(message, "qbit")

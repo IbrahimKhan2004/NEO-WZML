@@ -141,6 +141,15 @@ user_settings_text = {
 
  • <b>Time Left:</b> <code>60 sec</code>""",
     ),
+    "TERABOX_COOKIE": (
+        "File",
+        "Your TeraBox session cookie. Lets you upload finished tasks to your own TeraBox account with `-up tbx`.",
+        """<i>Send your <code>terabox.txt</code> cookie export (a browser \u201cGet cookies.txt\u201d export of your logged-in TeraBox session) to upload to your personal TeraBox account.</i>
+
+Then mirror with <code>-up tbx</code>, or set TeraBox as your default upload.
+
+ • <b>Time Left:</b> <code>60 sec</code>""",
+    ),
     "LEECH_DUMP_CHAT": (
         "Chat ID/Username",
         "Set where your leeched files will be uploaded. Can be a group, channel, or PM.",
@@ -626,10 +635,14 @@ async def get_user_settings(from_user, stype="main"):
             default_upload = user_dict["DEFAULT_UPLOAD"]
         elif "DEFAULT_UPLOAD" not in user_dict:
             default_upload = Config.DEFAULT_UPLOAD
-        du = "GDRIVE API" if default_upload == "gd" else "RCLONE"
-        dur = "GDRIVE API" if default_upload != "gd" else "RCLONE"
+        _du_names = {"gd": "GDRIVE API", "rc": "RCLONE", "tbx": "TERABOX"}
+        # Cycle: rc -> gd -> tbx -> rc
+        _du_next = {"rc": "gd", "gd": "tbx", "tbx": "rc"}
+        cur_du = default_upload if default_upload in _du_names else "rc"
+        du = _du_names[cur_du]
+        dur = _du_names[_du_next[cur_du]]
         buttons.data_button(
-            f"Swap to {dur} Mode", f"userset {user_id} {default_upload}"
+            f"Swap to {dur} Mode", f"userset {user_id} {cur_du}"
         )
 
         user_tokens = user_dict.get("USER_TOKENS", False)
@@ -1050,6 +1063,13 @@ async def get_user_settings(from_user, stype="main"):
         else:
             sd_msg = "Disabled"
 
+        buttons.data_button("Terabox Cookie", f"userset {user_id} menu TERABOX_COOKIE")
+        tbxmsg = (
+            "Exists"
+            if await aiopath.exists(f"terabox_cookies/{user_id}.txt")
+            else "Not Exists"
+        )
+
         buttons.data_button("Mirror Prefix", f"userset {user_id} menu MIRROR_PREFIX")
         buttons.data_button("Mirror Suffix", f"userset {user_id} menu MIRROR_SUFFIX")
         buttons.data_button("Mirror Name Swap", f"userset {user_id} menu MIRROR_NAME_SWAP")
@@ -1061,6 +1081,7 @@ async def get_user_settings(from_user, stype="main"):
  • <b>Rclone Path:</b> <code>{rccpath}</code>
  • <b>Gdrive Token:</b> <b>{tokenmsg}</b>
  • <b>Gdrive ID:</b> <code>{gdrive_id}</code>
+ • <b>Terabox Cookie:</b> <b>{tbxmsg}</b>
  • <b>Index Link:</b> <code>{index}</code>
  • <b>Mirror Prefix:</b> <code>{mprefix}</code>
  • <b>Mirror Suffix:</b> <code>{msuffix}</code>
@@ -1230,6 +1251,11 @@ async def add_file(_, message, ftype, rfunc):
         cpath = f"{getcwd()}/cookies/{user_id}"
         await makedirs(cpath, exist_ok=True)
         des_dir = f"{cpath}/cookies.txt"
+        await message.download(file_name=des_dir)
+    elif ftype == "TERABOX_COOKIE":
+        tbpath = f"{getcwd()}/terabox_cookies/"
+        await makedirs(tbpath, exist_ok=True)
+        des_dir = f"{tbpath}{user_id}.txt"
         await message.download(file_name=des_dir)
     await delete_message(message)
     update_user_ldata(user_id, ftype, des_dir)
@@ -1451,10 +1477,14 @@ async def get_menu(option, message, user_id):
         "RCLONE_CONFIG": f"rclone/{user_id}.conf",
         "TOKEN_PICKLE": f"tokens/{user_id}.pickle",
         "USER_COOKIE_FILE": f"cookies/{user_id}/cookies.txt",
+        "TERABOX_COOKIE": f"terabox_cookies/{user_id}.txt",
     }
 
     buttons = ButtonMaker()
-    if option in ["THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "USER_COOKIE_FILE"]:
+    if option in [
+        "THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "USER_COOKIE_FILE",
+        "TERABOX_COOKIE",
+    ]:
         key = "file"
     else:
         key = "set"
@@ -1965,9 +1995,9 @@ async def edit_user_settings(client, query):
     elif data[2] == "view":
         await query.answer()
         await send_file(message, thumb_path, name)
-    elif data[2] in ["gd", "rc"]:
+    elif data[2] in ["gd", "rc", "tbx"]:
         await query.answer()
-        du = "rc" if data[2] == "gd" else "gd"
+        du = {"rc": "gd", "gd": "tbx", "tbx": "rc"}.get(data[2], "rc")
         update_user_ldata(user_id, "DEFAULT_UPLOAD", du)
         await update_user_settings(query, stype="general")
         await database.update_user_data(user_id)

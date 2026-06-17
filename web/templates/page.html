@@ -1295,7 +1295,14 @@
         const gid = urlParams.get("gid");
         const pin = urlParams.get("pin");
         const type = urlParams.get("type") || "torrent";
-        const endpoint = type === "mega" ? "mega" : "torrent";
+        const endpoint =
+          type === "mega"
+            ? "mega"
+            : type === "terabox"
+            ? "terabox"
+            : type === "rclone"
+            ? "rclone"
+            : "torrent";
 
         if (pin) {
           $("#pinInput").val(pin);

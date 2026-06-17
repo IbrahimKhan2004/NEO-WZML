@@ -2,8 +2,8 @@
 
 def get_version() -> str:
     MAJOR = "1"
-    MINOR = "0"
-    PATCH = "4"
+    MINOR = "1"
+    PATCH = "0"
     return f"v{MAJOR}.{MINOR}.{PATCH}"
 
 if __name__ == "__main__":

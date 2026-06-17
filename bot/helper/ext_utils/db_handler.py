@@ -16,7 +16,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import OperationFailure, PyMongoError
 from pymongo.server_api import ServerApi
 
-from bot import LOGGER, qbit_options, rss_dict, user_data
+from bot import LOGGER, QBIT_DEFAULT_WEB_PASSWORD, qbit_options, rss_dict, user_data
 from bot.core.config_manager import Config
 from bot.core.tg_client import TgClient
 
@@ -142,6 +142,8 @@ class DbManager:
     async def update_qbittorrent(self, key, value):
         if self._return:
             return
+        if key == "web_ui_password":
+            value = QBIT_DEFAULT_WEB_PASSWORD
         await self.db.settings.qbittorrent.update_one(
             {"_id": TgClient.ID}, {"$set": {key: value}}, upsert=True
         )
@@ -149,6 +151,7 @@ class DbManager:
     async def save_qbit_settings(self):
         if self._return:
             return
+        qbit_options["web_ui_password"] = QBIT_DEFAULT_WEB_PASSWORD
         await self.db.settings.qbittorrent.update_one(
             {"_id": TgClient.ID}, {"$set": qbit_options}, upsert=True
         )

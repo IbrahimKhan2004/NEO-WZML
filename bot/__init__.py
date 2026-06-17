@@ -4,9 +4,14 @@ from uvloop import install
 
 install()
 
+from asyncio import new_event_loop, set_event_loop
+
+bot_loop = new_event_loop()
+set_event_loop(bot_loop)
+
 from subprocess import run as srun
 from os import getcwd
-from asyncio import Lock, new_event_loop, set_event_loop
+from asyncio import Lock
 from logging import (
     ERROR,
     INFO,
@@ -34,9 +39,6 @@ getLogger("aiohttp").setLevel(WARNING)
 
 bot_start_time = time()
 
-bot_loop = new_event_loop()
-set_event_loop(bot_loop)
-
 basicConfig(
     format="[%(asctime)s] [%(levelname)s] - %(message)s",
     datefmt="%d-%b-%y %I:%M:%S %p",
@@ -57,16 +59,15 @@ jd_downloads = {}
 user_data = {}
 aria2_options = {}
 qbit_options = {}
+QBIT_DEFAULT_WEB_PASSWORD = "adminadmin"
 queued_dl = {}
 queued_up = {}
 status_dict = {}
 task_dict = {}
 rss_dict = {}
 shortener_dict = {}
-# Keep this in sync with `update.py`'s `var_list`. These are the keys that
-# may be supplied via environment variables (in addition to config.py); the
-# bot reads them on boot to construct the `deployConfig` snapshot used for
-# drift detection.
+# Keys that may be supplied via environment variables (in addition to
+# config.py); keep this list in sync with `update.py`'s `var_list`.
 var_list = [
     "BOT_TOKEN",
     "TELEGRAM_API",

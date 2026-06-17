@@ -184,6 +184,44 @@ def mega_selection_buttons(gid):
     return buttons.build_menu(2)
 
 
+def terabox_selection_buttons(gid):
+    pin = _derive_web_pin(gid)
+    base_url = get_valid_base_url()
+    buttons = ButtonMaker()
+    if Config.WEB_PINCODE:
+        buttons.url_button(
+            "Select Files", f"{base_url}/app/files?gid={gid}&type=terabox"
+        )
+        buttons.data_button("Pincode", f"sel pin {gid} {pin}")
+    else:
+        buttons.url_button(
+            "Select Files",
+            f"{base_url}/app/files?gid={gid}&pin={pin}&type=terabox",
+        )
+    buttons.data_button("Done Selecting", f"sel done {gid} {gid}")
+    buttons.data_button("Cancel", f"sel cancel {gid}")
+    return buttons.build_menu(2)
+
+
+def rclone_selection_buttons(gid):
+    pin = _derive_web_pin(gid)
+    base_url = get_valid_base_url()
+    buttons = ButtonMaker()
+    if Config.WEB_PINCODE:
+        buttons.url_button(
+            "Select Files", f"{base_url}/app/files?gid={gid}&type=rclone"
+        )
+        buttons.data_button("Pincode", f"sel pin {gid} {pin}")
+    else:
+        buttons.url_button(
+            "Select Files",
+            f"{base_url}/app/files?gid={gid}&pin={pin}&type=rclone",
+        )
+    buttons.data_button("Done Selecting", f"sel done {gid} {gid}")
+    buttons.data_button("Cancel", f"sel cancel {gid}")
+    return buttons.build_menu(2)
+
+
 async def get_telegraph_list(telegraph_content):
     path = [
         (

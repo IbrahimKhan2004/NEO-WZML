@@ -631,6 +631,13 @@ async def add_mega_download(listener, path):
             await _discard_link(link_key)
             await _close_mega(async_api, mega_base)
 
+def get_mega_selection_owner_id(gid):
+    state = _mega_selections.get(gid)
+    if not state:
+        return None
+    listener = state.get("listener")
+    return getattr(listener, "user_id", None)
+
 
 async def resume_mega_with_selection(gid):
     state = _mega_selections.pop(gid, None)

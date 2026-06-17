@@ -123,8 +123,17 @@ async def confirm_selection(_, query):
         from bot.helper.mirror_leech_utils.download_utils.mega_download import (
             resume_mega_with_selection,
             cancel_mega_selection,
+            get_mega_selection_owner_id,
         )
         real_gid = data[2].replace("mega_", "", 1)
+        owner_id = get_mega_selection_owner_id(real_gid)
+        if owner_id is None:
+            await query.answer("This task has been cancelled!", show_alert=True)
+            await delete_message(message)
+            return
+        if user_id != owner_id:
+            await query.answer("This task is not for you!", show_alert=True)
+            return
         if data[1] == "pin":
             if len(data) >= 4:
                 await query.answer(data[3], show_alert=True)
@@ -137,6 +146,64 @@ async def confirm_selection(_, query):
         else:
             await delete_message(message)
             await cancel_mega_selection(real_gid)
+        return
+
+    if data[2].startswith("terabox_"):
+        from bot.helper.mirror_leech_utils.download_utils.terabox_download import (
+            resume_terabox_with_selection,
+            cancel_terabox_selection,
+            get_terabox_selection_owner_id,
+        )
+        real_gid = data[2].replace("terabox_", "", 1)
+        owner_id = get_terabox_selection_owner_id(real_gid)
+        if owner_id is None:
+            await query.answer("This task has been cancelled!", show_alert=True)
+            await delete_message(message)
+            return
+        if user_id != owner_id:
+            await query.answer("This task is not for you!", show_alert=True)
+            return
+        if data[1] == "pin":
+            if len(data) >= 4:
+                await query.answer(data[3], show_alert=True)
+            else:
+                await query.answer("Missing PIN value.", show_alert=True)
+        elif data[1] == "done":
+            await query.answer()
+            await resume_terabox_with_selection(real_gid)
+            await delete_message(message)
+        else:
+            await delete_message(message)
+            await cancel_terabox_selection(real_gid)
+        return
+
+    if data[2].startswith("rclone_"):
+        from bot.helper.mirror_leech_utils.download_utils.rclone_download import (
+            resume_rclone_with_selection,
+            cancel_rclone_selection,
+            get_rclone_selection_owner_id,
+        )
+        real_gid = data[2].replace("rclone_", "", 1)
+        owner_id = get_rclone_selection_owner_id(real_gid)
+        if owner_id is None:
+            await query.answer("This task has been cancelled!", show_alert=True)
+            await delete_message(message)
+            return
+        if user_id != owner_id:
+            await query.answer("This task is not for you!", show_alert=True)
+            return
+        if data[1] == "pin":
+            if len(data) >= 4:
+                await query.answer(data[3], show_alert=True)
+            else:
+                await query.answer("Missing PIN value.", show_alert=True)
+        elif data[1] == "done":
+            await query.answer()
+            await resume_rclone_with_selection(real_gid)
+            await delete_message(message)
+        else:
+            await delete_message(message)
+            await cancel_rclone_selection(real_gid)
         return
 
     task = await get_task_by_gid(data[2])

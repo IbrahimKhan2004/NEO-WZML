@@ -22,6 +22,7 @@ from bot.helper.ext_utils.links_utils import (
     is_gdrive_link,
     is_rclone_path,
     is_share_link,
+    is_terabox_link,
 )
 from bot.helper.ext_utils.task_manager import (
     pre_task_check,
@@ -146,7 +147,8 @@ class Clone(TaskListener):
             )
             await delete_links(self.message)
             return
-        LOGGER.info(self.link)
+        if not is_terabox_link(self.link):
+            LOGGER.info(self.link)
         try:
             await self.before_start()
         except Exception as e:
@@ -156,9 +158,13 @@ class Clone(TaskListener):
             return
 
         self._set_mode_engine()
-        await delete_links(self.message)
 
-        await self._proceed_to_clone(sync)
+        await self.send_processing()
+        try:
+            await delete_links(self.message)
+            await self._proceed_to_clone(sync)
+        finally:
+            await self.remove_processing()
 
     async def _proceed_to_clone(self, sync):
         if is_share_link(self.link):

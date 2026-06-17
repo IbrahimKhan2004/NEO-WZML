@@ -150,6 +150,8 @@ upload = """<b>✦ UPLOAD DESTINATION</b>: <code>-up</code>
 • <code>-up GDRIVE_ID</code> - Google Drive folder ID
 • <code>-up gd</code> - Use default GDRIVE_ID
 • <code>-up rc</code> - Use default RCLONE_PATH
+• <code>-up tbx</code> - Upload to your TeraBox account (terabox.txt cookie)
+• <code>-up tbx:/Folder</code> - TeraBox upload into a specific folder
 
 <b>Telegram (Leech only):</b>
 • <code>-up @channel</code> or <code>-up chat_id</code>
@@ -271,6 +273,11 @@ rlone_dl = """<b>✦ RCLONE DOWNLOAD</b>
 <code>/cmd remote:path/file.iso</code>
 <code>/cmd rcl</code> (interactive selection)
 
+<b>Web file selection:</b>
+With <code>/cmd rcl</code>, pick a remote + folder, then a <b>web selector</b>
+opens (when a public <code>BASE_URL</code> is set) to tick exactly which files to
+download. Pick a single file to grab just that one.
+
 <b>User Config:</b>
 Add <code>mrcc:</code> prefix to use your uploaded rclone config:
 <code>/cmd mrcc:remote:path/file</code>
@@ -279,6 +286,21 @@ Add <code>mrcc:</code> prefix to use your uploaded rclone config:
 <code>/mirror gdrive:Movies/movie.mkv</code>
 <code>/mirror rcl</code> (select via buttons)
 <code>/mirror mrcc:mydrive:backup/</code>"""
+
+terabox_dl = """<b>✦ TERABOX (own account)</b>
+
+<b>Usage:</b> Browse your own TeraBox cloud and pick what to grab:
+<code>/leech tbx</code> (interactive selection)
+<code>/mirror tbx</code> (interactive selection)
+
+Opens the <b>web file selector</b> (when a public <code>BASE_URL</code> is set):
+your whole account is listed as a tickable folder tree — choose files, then
+press <b>Done Selecting</b> to start. Without a BASE_URL it falls back to a
+Telegram button menu.
+
+<b>Note:</b> needs your <code>terabox.txt</code> cookie (User Settings → Private
+Files, or the owner's global one). For public share links just paste the URL
+directly (no <code>tbx</code> needed)."""
 
 extract_zip = """<b>✦ EXTRACT / ZIP</b>: <code>-e</code> <code>-z</code>
 
@@ -654,6 +676,7 @@ MIRROR_HELP_DICT = {
     "Join": join,
     "Merge-Video": merge_video,
     "Rclone-DL": rlone_dl,
+    "Terabox-DL": terabox_dl,
     "Tg-Links": tg_links,
     "Sample-Video": sample_video,
     "Screenshot": screenshot,
@@ -1082,7 +1105,7 @@ config_descriptions = {
     "LEECH_NAME_SWAP": "Regex patterns to modify leeched filenames",
     "LEECH_DUMP_CHAT": "Chat/Channel ID where leeched files are uploaded",
 
-    "DEFAULT_UPLOAD": "Default upload destination: gd, rc, or ddl",
+    "DEFAULT_UPLOAD": "Default upload destination: gd (GDrive), rc (Rclone), or tbx (TeraBox)",
     "MIRROR_PREFIX": "Text added BEFORE every mirrored filename",
     "MIRROR_SUFFIX": "Text added AFTER every mirrored filename",
     "MIRROR_NAME_SWAP": "Regex patterns to modify mirrored filenames",
@@ -1093,6 +1116,7 @@ config_descriptions = {
     "TORRENT_LIMIT": "Max torrent download size in GB",
     "DIRECT_LIMIT": "Max direct link download size in GB",
     "MEGA_LIMIT": "Max Mega.nz download size in GB",
+    "TERABOX_LIMIT": "Max Terabox download size in GB",
     "GDRIVE_LIMIT": "Max Google Drive download/upload size in GB",
     "RCLONE_LIMIT": "Max Rclone download/upload size in GB. 0 = no limit",
     "CLONE_LIMIT": "Max Google Drive clone size in GB",
@@ -1129,6 +1153,8 @@ config_descriptions = {
     "MEGA_ENABLED": "Enable Mega.nz downloads",
     "MEGA_EMAIL": "Mega.nz premium account email for higher limits",
     "MEGA_PASSWORD": "Mega.nz premium account password",
+    "TERABOX_ENABLED": "Enable Terabox downloads (teraboxSDK). Auth via a terabox.txt cookie export (Private Files).",
+    "TERABOX_UPLOAD_PATH": "Default folder in the TeraBox account for `-up tbx` uploads (e.g. /NEO-WZML). Empty = account root.",
 
     "DEBRID_LINK_API": "Debrid-Link.com API key for 172+ premium host support",
     "REAL_DEBRID_API": "Real-Debrid.com API key for torrent cache and premium hosts",

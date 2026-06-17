@@ -10,6 +10,16 @@ from bot.helper.ext_utils.status_utils import (
     get_readable_file_size,
     get_readable_time,
 )
+from bot.helper.mirror_leech_utils.qbit_compat import (
+    CHECKING_STATES,
+    PAUSED_STATES,
+    QUEUE_DOWNLOAD_STATES,
+    QUEUE_UPLOAD_STATES,
+    SEEDING_STATES,
+    first_torrent_tag,
+    is_metadata_state,
+    seconds_value,
+)
 
 
 async def get_download(tag, old_info=None):
@@ -50,7 +60,7 @@ class QbittorrentStatus:
     def name(self):
         if not self._info:
             return self.listener.name
-        if self._info.state in ["metaDL", "checkingResumeData"]:
+        if is_metadata_state(self._info.state):
             return f"[METADATA]{self.listener.name}"
         else:
             return self.listener.name
@@ -63,22 +73,22 @@ class QbittorrentStatus:
     def eta(self):
         if not self._info:
             return "-"
-        return get_readable_time(self._info.eta.total_seconds())
+        return get_readable_time(seconds_value(self._info.eta))
 
     async def status(self):
         await self.update()
         if not self._info:
             return MirrorStatus.STATUS_DOWNLOAD
         state = self._info.state
-        if state == "queuedDL" or self.queued:
+        if state in QUEUE_DOWNLOAD_STATES or self.queued:
             return MirrorStatus.STATUS_QUEUEDL
-        elif state == "queuedUP":
+        elif state in QUEUE_UPLOAD_STATES:
             return MirrorStatus.STATUS_QUEUEUP
-        elif state in ["stoppedDL", "stoppedUP"]:
+        elif state in PAUSED_STATES:
             return MirrorStatus.STATUS_PAUSED
-        elif state in ["checkingUP", "checkingDL"]:
+        elif state in CHECKING_STATES:
             return MirrorStatus.STATUS_CHECK
-        elif state in ["stalledUP", "uploading"] and self.seeding:
+        elif state in SEEDING_STATES and self.seeding:
             return MirrorStatus.STATUS_SEED
         else:
             return MirrorStatus.STATUS_DOWNLOAD
@@ -111,7 +121,7 @@ class QbittorrentStatus:
     def seeding_time(self):
         if not self._info:
             return "-"
-        return get_readable_time(int(self._info.seeding_time.total_seconds()))
+        return get_readable_time(seconds_value(self._info.seeding_time))
 
     def task(self):
         return self
@@ -138,14 +148,17 @@ class QbittorrentStatus:
             else:
                 LOGGER.info(f"Cancelling Download: {self._info.name}")
                 msg = "Stopped by user!"
-            await sleep(0.3)
-            await gather(
+            tag = first_torrent_tag(self._info)
+            cleanup = [
                 self.listener.on_download_error(msg),
                 TorrentManager.qbittorrent.torrents.delete([self._info.hash], True),
-                TorrentManager.qbittorrent.torrents.delete_tags(
-                    tags=[self._info.tags[0]]
-                ),
-            )
+            ]
+            if tag:
+                cleanup.append(
+                    TorrentManager.qbittorrent.torrents.delete_tags(tags=[tag])
+                )
+            await sleep(0.3)
+            await gather(*cleanup)
             async with qb_listener_lock:
-                if self._info.tags[0] in qb_torrents:
-                    del qb_torrents[self._info.tags[0]]
+                if tag and tag in qb_torrents:
+                    del qb_torrents[tag]

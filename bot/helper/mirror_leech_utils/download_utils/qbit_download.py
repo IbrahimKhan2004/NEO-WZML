@@ -19,6 +19,11 @@ from bot.core.torrent_manager import TorrentManager
 from bot.helper.ext_utils.bot_utils import bt_selection_buttons
 from bot.helper.ext_utils.task_manager import check_running_tasks
 from bot.helper.listeners.qbit_listener import on_download_start
+from bot.helper.mirror_leech_utils.qbit_compat import (
+    PAUSED_STATES,
+    is_metadata_state,
+    torrent_tags,
+)
 from bot.helper.mirror_leech_utils.status_utils.qbit_status import QbittorrentStatus
 from bot.helper.telegram_helper.message_utils import (
     send_message,
@@ -40,6 +45,7 @@ def _get_hash_magnet(mgt: str):
     if len(hash_) == 32:
         hash_ = b16encode(b32decode(hash_.upper())).decode()
     return hash_
+
 
 async def add_qb_torrent(listener, path, ratio, seed_time):
     if Config.DISABLE_TORRENTS:
@@ -89,14 +95,22 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
             if listener.link.startswith("magnet:"):
                 try:
                     hash_ = _get_hash_magnet(listener.link)
-                    tor_info_list = await TorrentManager.qbittorrent.torrents.info(hashes=[hash_])
+                    tor_info_list = await TorrentManager.qbittorrent.torrents.info(
+                        hashes=[hash_]
+                    )
                     if tor_info_list:
                         task = await get_task_by_gid(hash_[:12])
                         if not task:
-                            LOGGER.info(f"Removing Duplicated Zombie Torrent: {tor_info_list[0].name} - Hash: {hash_}")
+                            LOGGER.info(
+                                "Removing Duplicated Zombie Torrent: "
+                                f"{tor_info_list[0].name} - Hash: {hash_}"
+                            )
                             await TorrentManager.qbittorrent.torrents.delete([hash_], True)
-                            if tor_info_list[0].tags:
-                                await TorrentManager.qbittorrent.torrents.delete_tags(tags=tor_info_list[0].tags)
+                            tags = torrent_tags(tor_info_list[0])
+                            if tags:
+                                await TorrentManager.qbittorrent.torrents.delete_tags(
+                                    tags=tags
+                                )
                             await sleep(0.5)
                             await TorrentManager.qbittorrent.torrents.add(form.build())
                             zombie_found = True
@@ -161,11 +175,10 @@ async def add_qb_torrent(listener, path, ratio, seed_time):
                         return
                     try:
                         tor_info = tor_info[0]
-                        if tor_info.state not in [
-                            "metaDL",
-                            "checkingResumeData",
-                            "stoppedDL",
-                        ]:
+                        if not (
+                            is_metadata_state(tor_info.state)
+                            or tor_info.state in PAUSED_STATES
+                        ):
                             await delete_message(meta)
                             break
                     except Exception:

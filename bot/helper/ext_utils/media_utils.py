@@ -249,6 +249,22 @@ async def get_document_type(path):
     if mime_type.startswith("image"):
         return False, False, True
 
+    # Skip ffprobe for non-media MIME types — ffprobe can misinterpret
+    # binary data in documents (e.g. PDFs) as audio/video streams.
+    _non_media_mimes = (
+        "application/pdf",
+        "application/epub",
+        "application/msword",
+        "application/vnd.openxmlformats",
+        "application/vnd.ms-",
+        "application/rtf",
+        "application/json",
+        "text/",
+        "font/",
+    )
+    if mime_type.startswith(_non_media_mimes):
+        return False, False, False
+
     is_video_extension = path.lower().endswith(VIDEO_EXTENSIONS)
     
     try:

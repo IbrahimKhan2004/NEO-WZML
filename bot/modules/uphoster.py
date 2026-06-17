@@ -23,6 +23,7 @@ from bot.helper.ext_utils.links_utils import (
     is_magnet,
     is_rclone_path,
     is_telegram_link,
+    is_terabox_link,
     is_url,
 )
 from bot.helper.ext_utils.task_manager import pre_task_check, register_task_for_limit_check
@@ -390,7 +391,7 @@ class Uphoster(TaskListener):
             await delete_links(self.message)
             return
 
-        if len(self.link) > 0:
+        if len(self.link) > 0 and not is_terabox_link(self.link):
             LOGGER.info(self.link)
 
         try:

@@ -44,6 +44,33 @@ def is_mega_link(url: str):
     return "mega.nz" in url or "mega.co.nz" in url
 
 
+_TERABOX_DOMAINS = (
+    "terabox.com",
+    "terabox.app",
+    "teraboxapp.com",
+    "1024terabox.com",
+    "1024tera.com",
+    "freeterabox.com",
+    "nephobox.com",
+    "4funbox.com",
+    "mirrobox.com",
+    "momerybox.com",
+    "teraboxlink.com",
+    "teraboxshare.com",
+    "terasharelink.com",
+    "terafileshare.com",
+    "gibibox.com",
+    "goaibox.com",
+    "dubox.com",
+)
+
+
+def is_terabox_link(url: str):
+    if not isinstance(url, str) or not url:
+        return False
+    return any(domain in url for domain in _TERABOX_DOMAINS)
+
+
 def get_mega_link_type(url):
     return "folder" if "folder" in url or "/#F!" in url else "file"
 

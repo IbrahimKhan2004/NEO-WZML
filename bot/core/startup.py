@@ -21,6 +21,7 @@ from bot import (
     user_data,
     excluded_extensions,
     qbit_options,
+    QBIT_DEFAULT_WEB_PASSWORD,
     rss_dict,
     sudo_users,
 )
@@ -37,6 +38,29 @@ def _safe_int(value, default=0):
         return default
 
 
+async def _ensure_qbit_web_password(bot_id=None):
+    if qbit_options.get("web_ui_password") == QBIT_DEFAULT_WEB_PASSWORD:
+        return
+
+    current = qbit_options.get("web_ui_password")
+    if current is None:
+        LOGGER.info("Applying qBittorrent WebUI password from startup settings.")
+    elif len(str(current)) < 6:
+        LOGGER.warning(
+            "Migrating qBittorrent WebUI password to meet qBittorrent 5.2+ length rules."
+        )
+    else:
+        LOGGER.info("Overriding qBittorrent WebUI password from startup settings.")
+
+    qbit_options["web_ui_password"] = QBIT_DEFAULT_WEB_PASSWORD
+    if bot_id and database.db is not None:
+        await database.db.settings.qbittorrent.update_one(
+            {"_id": bot_id},
+            {"$set": {"web_ui_password": QBIT_DEFAULT_WEB_PASSWORD}},
+            upsert=True,
+        )
+
+
 async def update_qb_options():
     LOGGER.info("Get qBittorrent options from server")
     if not qbit_options:
@@ -51,11 +75,12 @@ async def update_qb_options():
         for k in list(qbit_options.keys()):
             if k.startswith("rss"):
                 del qbit_options[k]
-        qbit_options["web_ui_password"] = "admin"
+        await _ensure_qbit_web_password(TgClient.ID)
         await TorrentManager.qbittorrent.app.set_preferences(
-            {"web_ui_password": "admin"}
+            {"web_ui_password": QBIT_DEFAULT_WEB_PASSWORD}
         )
     else:
+        await _ensure_qbit_web_password(TgClient.ID)
         await TorrentManager.qbittorrent.app.set_preferences(qbit_options)
 
 
@@ -160,6 +185,7 @@ async def load_settings():
                 {"_id": BOT_ID}, {"_id": 0}
             ):
                 qbit_options.update(qbit_opt)
+                await _ensure_qbit_web_password(BOT_ID)
 
         if await database.db.users[BOT_ID].find_one():
             rows = database.db.users[BOT_ID].find({})
@@ -424,6 +450,7 @@ async def load_configurations():
         LOGGER.info("Torrents are disabled. Skipping qBittorrent initialization.")
     else:
         try:
+            await _ensure_qbit_web_password(TgClient.ID)
             await TorrentManager.qbittorrent.app.set_preferences(qbit_options)
         except Exception as e:
             LOGGER.error(f"Failed to configure qBittorrent: {e}")
