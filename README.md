@@ -7,8 +7,9 @@
 
 # NEO-WZML
 
-**A Mutli Functional Telegram bot to download from anywhere — torrents, Mega, YouTube, Google Drive, rclone, etc — and upload to Telegram, Cloud Drives, DDLs, or any rclone remote. Built-in FFmpeg processing, archive handling, torrent search, RSS monitoring, and web UI for file selection. Based on WZML-X**
+**A multi-functional Telegram bot to download from anywhere — torrents, Mega, TeraBox, YouTube, Google Drive, rclone, etc — and upload to Telegram, Cloud Drives, TeraBox, DDLs, or any rclone remote. Built-in FFmpeg processing, archive handling, torrent search, RSS monitoring, and web UI for file selection. Based on WZML-X**
 
+[![Version](https://img.shields.io/badge/Version-1.1.1-2ea043)](https://github.com/irisXDR/NEO-WZML)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker image](https://img.shields.io/docker/image-size/irisxdr/neo-wzml/latest?logo=docker&label=Docker%20Image&labelColor=161b22&color=2496ed)](https://hub.docker.com/r/irisxdr/neo-wzml)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -44,9 +45,9 @@
 
 NEO-WZML is built for people who move a lot of files through Telegram and cloud storage. It combines the classic mirror/leech workflow with modern file selection, persistent user settings, strong queue controls, and practical media tools.
 
-- 🔌 **One bot, many sources:** direct links, torrents, Mega, Google Drive, JDownloader, yt-dlp, Telegram messages, and rclone remotes.
-- 🎯 **Multiple upload targets:** Telegram leech, Google Drive, rclone remotes, GoFile, BuzzHeavier, and PixelDrain.
-- 🌐 **Web file selection:** pick torrent files and Mega folder files before downloading.
+- 🔌 **One bot, many sources:** direct links, torrents, Mega, TeraBox, Google Drive, JDownloader, yt-dlp, Telegram messages, and rclone remotes.
+- 🎯 **Multiple upload targets:** Telegram leech, Google Drive, TeraBox, rclone remotes, GoFile, BuzzHeavier, and PixelDrain.
+- 🌐 **Web file selection:** pick torrent files, Mega folder files, rclone folder files, and TeraBox account files before downloading.
 - 🎬 **Media-ready:** split, convert, merge videos, sample videos, screenshots, metadata, thumbnails, and custom FFmpeg pipelines.
 - 🗜️ **Archive workflow:** extract, password-protected ZIPs, image-only ZIPs, split archive handling, and 7z-backed progress.
 - 🛡️ **Operational controls:** MongoDB persistence, queues, per-user limits, cooldowns, verification, auth gates, and safe group behavior.
@@ -63,10 +64,11 @@ NEO-WZML is built for people who move a lot of files through Telegram and cloud 
 | Aria2c | Direct links, magnets, torrents | Fast generic downloads |
 | qBittorrent | Magnets and `.torrent` files | Search, selection, seeding |
 | MegaSDK | Mega file and folder links | Native Mega downloads and folder selection |
+| TeraBoxSDK | TeraBox share links and account files | Native TeraBox downloads, account browsing, web file selector |
 | Google Drive | Files and folders | OAuth, service accounts, Team Drives |
 | yt-dlp | YouTube and supported sites | Formats, playlists, audio extraction |
 | Telegram | Messages and chat files | Large Telegram file handling |
-| rclone | Any configured remote | Cloud download and cloud transfer |
+| rclone | Any configured remote | Cloud download, cloud transfer, and web file selector |
 | JDownloader | Premium hosts and containers | Host capture and CAPTCHA-aware flows |
 
 ### ☁️ Upload Targets
@@ -75,6 +77,7 @@ NEO-WZML is built for people who move a lot of files through Telegram and cloud 
 |--------|-------|
 | Telegram | Leech as media or document, with captions, thumbnails, dump chats, and splitting |
 | Google Drive | OAuth, service accounts, Team Drives, duplicate checks, and index links |
+| TeraBox | Upload to your TeraBox account via cookie auth (`-up tbx`), with optional folder path |
 | rclone | Upload to any configured remote, including user configs via `mrcc:` |
 | DDL hosts | Upload to GoFile, BuzzHeavier, PixelDrain, or multiple hosts |
 
@@ -127,12 +130,14 @@ Recommended for the full experience:
 
 | Variable | Purpose |
 |----------|---------|
-| `BASE_URL` | Public URL for torrent and Mega web file selection |
+| `BASE_URL` | Public URL for torrent, Mega, rclone, and TeraBox web file selection |
 | `RCLONE_PATH` or `GDRIVE_ID` | Default cloud upload destination |
 | `LEECH_DUMP_CHAT` | Default Telegram leech destination |
 | `MEGA_EMAIL` / `MEGA_PASSWORD` | Optional Mega account for better Mega workflows |
+| `TERABOX_ENABLED` | Enable TeraBox integration (default: `True`) |
+| `DEFAULT_UPLOAD` | Default upload cycling: `rc` → `gd` → `tbx` (TeraBox) |
 
-> 🔐 Keep tokens, OAuth files, MongoDB URLs, rclone configs, Mega accounts, and service-account JSONs out of public commits.
+> 🔐 Keep tokens, OAuth files, MongoDB URLs, rclone configs, Mega accounts, TeraBox cookies, and service-account JSONs out of public commits.
 
 ---
 
@@ -154,6 +159,7 @@ Send `/help` inside Telegram for the complete live command list.
 | `/count <link>` | Count Google Drive files and size |
 | `/usettings` | User-specific settings |
 | `/bsetting` | Owner configuration panel |
+| `/tbx` / `tbx` | Browse your TeraBox account (interactive web file selector) |
 
 ### 🧩 Common Arguments
 
@@ -166,6 +172,7 @@ Send `/help` inside Telegram for the complete live command list.
 | `-zim` / `-zipimages` | ZIP only images into one archive |
 | `-mv` | Merge videos in a folder |
 | `-up <destination>` | Override upload destination |
+| `-up tbx` | Upload to your TeraBox account (requires `terabox.txt` cookie) |
 | `-i <N>` | Process consecutive messages as a multi-task |
 | `-ud <name[,name]\|all>` | Select configured Telegram dump destinations |
 
@@ -197,13 +204,14 @@ NEO-WZML is based on WZML-X and focuses on deployment reliability, modern select
 
 | Area | NEO-WZML |
 |------|----------|
+| TeraBox | Native TeraBoxSDK integration — download, upload, account browsing, web file selector |
 | Mega | Native MegaSDK 8.1.1 and web folder selection |
-| Selection | Torrent and Mega selection through the built-in web UI |
+| Selection | Torrent, Mega, rclone, and TeraBox selection through the built-in web UI |
 | Limits | Universal task locks, per-user ceilings, queues, and cooldowns |
 | Media | Auto thumbnails, metadata, screenshots, sample videos, merge video, custom FFmpeg |
 | Archives | Extract, ZIP, password ZIP, image-only ZIP |
-| Uploads | Telegram, Drive, rclone, and multi-DDL host uploads |
-| UX | Save buttons, dump selection, filename formatting, safer group behavior |
+| Uploads | Telegram, Drive, TeraBox, rclone, and multi-DDL host uploads |
+| UX | Instant "Processing..." ack, save buttons, dump selection, filename formatting, ownership guards |
 | Deployment | Docker bridge networking with optional VPN routing scaffold |
 
 Removed from this fork: NZB/SABnzbd, YouTube upload, IMDB, and broadcast modules.

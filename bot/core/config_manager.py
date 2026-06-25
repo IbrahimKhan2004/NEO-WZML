@@ -266,6 +266,6 @@ class Config:
 
 class BinConfig:
     ARIA2_NAME = "neoweb"
-    QBIT_NAME = "neotorrent"
+    QBIT_NAME = "neobit"
     FFMPEG_NAME = "neorender"
     RCLONE_NAME = "neocloud"
