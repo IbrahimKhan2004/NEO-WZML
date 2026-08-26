@@ -177,6 +177,13 @@ class Clone(TaskListener):
                     await database.remove_shared_task(self.message.id, TgClient.ID, user_id=self.user_id)
                     await send_message(self.message, str(e))
                     return
+            if not isinstance(self.link, str):
+                await database.remove_shared_task(self.message.id, TgClient.ID, user_id=self.user_id)
+                await send_message(
+                    self.message,
+                    "This link resolved to multiple direct downloads, which clone cannot handle. Use /mirror instead.",
+                )
+                return
         if is_gdrive_link(self.link) or is_gdrive_id(self.link):
             self.name, mime_type, self.size, files, _ = await sync_to_async(
                 GoogleDriveCount().count, self.link, self.user_id

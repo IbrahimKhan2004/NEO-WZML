@@ -36,10 +36,17 @@ async def add_direct_download(listener, path):
         return
     listener.size = details["total_size"]
 
+    # A lone file with no sub-path is the file itself, not a folder: name the task
+    # after it and download straight into path so we don't nest name/name.
+    single_file = len(contents) == 1 and not contents[0].get("path")
+
     if not listener.name:
-        listener.name = details["title"]
+        listener.name = contents[0]["filename"] if single_file else details["title"]
     listener.name = _sanitise_dl_subdir(listener.name)
-    path = f"{path}/{listener.name}"
+    if single_file:
+        contents = [{**contents[0], "filename": listener.name}]
+    else:
+        path = f"{path}/{listener.name}"
 
     msg, button = await stop_duplicate_check(listener)
     if msg:

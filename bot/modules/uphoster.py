@@ -419,7 +419,12 @@ class Uphoster(TaskListener):
             content_type = await get_content_type(self.link)
             if content_type is None or re_match(r"text/html|text/plain", content_type):
                 try:
-                    self.link = await sync_to_async(direct_link_generator, self.link)
+                    # -au/-ap double as the credentials/password for hosts that
+                    # need them (index links, GoFile).
+                    dl_input = self.link
+                    if args["-au"] or args["-ap"]:
+                        dl_input = (self.link, (args["-au"], args["-ap"]))
+                    self.link = await sync_to_async(direct_link_generator, dl_input)
                     if isinstance(self.link, tuple):
                         self.link, headers = self.link
                     elif isinstance(self.link, str):

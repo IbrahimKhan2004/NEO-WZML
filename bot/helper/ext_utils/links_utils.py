@@ -78,10 +78,16 @@ def get_mega_link_type(url):
 def is_share_link(url: str):
     return bool(
         re_match(
-            r"https?:\/\/.+\.gdtot\.\S+|https?:\/\/(filepress|filebee|appdrive|gdflix)\.\S+",
+            r"https?:\/\/.+\.gdtot\.\S+|https?:\/\/(filepress|filebee|appdrive|gdflix|www\.jiodrive)\.\S+",
             url,
         )
     )
+
+
+# Bhadoo-style Google Drive index links always carry a drive-ordinal path
+# segment (``/0:/``); plain worker file links do not and are resolved elsewhere.
+def is_index_link(url: str):
+    return bool(re_match(r"https?:\/\/[^\/\s]+\/(?:[^\/\s]+\/)*\d+:(?:\/|$)", url))
 
 
 def is_rclone_path(path: str):
