@@ -10,7 +10,7 @@ from http.cookiejar import MozillaCookieJar
 from json import loads
 from lxml.etree import HTML
 from os import path as ospath
-from re import findall, fullmatch, match, search, sub
+from re import DOTALL, findall, fullmatch, match, search, sub
 from requests import Session, post, get, RequestException
 from requests.adapters import HTTPAdapter
 from time import sleep, time
@@ -296,55 +296,33 @@ real_debrid_supported_sites = [
     "xubster.com",
 ]
 
-GDFLIX_DOMAINS = ["gdflix.dev", "gdflix.io", "gdflix.lol", "gdflix.me"]
+GDFLIX_DOMAINS = ["gdflix", "gdlink"]
 
 HUBCLOUD_DOMAINS = ["hubcloud.cx", "hubcloud.club", "hubcloud.fans", "hubcloud.one"]
 HUBDRIVE_DOMAINS = ["hubdrive.tips", "hubdrive.in", "hubdrive.me"]
 HUBCDN_DOMAINS = ["hubcdn.sbs", "hubcdn.in"]
 
-# Anchor text fragments used to identify each HubCloud mirror server.
-HUB_SERVER_LABELS = [
-    ("FSLv2", ["fslv2"]),
-    ("FSL", ["fsl server", "[fsl"]),
-    ("10Gbps", ["10gbps", "10 gbps", "gpdl"]),
-    ("Pixeldrain", ["pixel", "pixeldrain"]),
-    ("Buzz", ["buzz", "bzzhr", "buzzheavier", "buzzserver"]),
-    ("GoFile", ["gofile"]),
-    ("Megaup", ["megaup"]),
-    ("HubCDN", ["hubcdn"]),
+HUB_SERVER_RANK = [
+    (r"fslv2", 10),
+    (r"\[fsl|fsl server", 15),
+    (r"10\s*gbps|gpdl", 20),
+    (r"zipdisk", 25),
+    (r"download file", 30),
+    (r"pixel", 40),
+    (r"buzz|bzzhr", 50),
+    (r"gofile", 60),
+    (r"megaup", 70),
+    (r"hubcdn", 80),
 ]
 
-HUB_SERVER_ORDER = [
-    "FSLv2",
-    "FSL",
-    "10Gbps",
-    "Pixeldrain",
-    "Buzz",
-    "GoFile",
-    "Megaup",
-    "HubCDN",
-    "Direct",
-]
+HUB_REJECT_HREF = (
+    r"(?:t\.me/|/tg/go\?|tinyurl\.|one\.one\.one|google\.com/search"
+    r"|hubcloud\.[a-z]+/drive/admin|hubcloud\.fans|hdhub4u|bonuscaf"
+    r"|winexch|snvhost|jquery|jsdelivr|fontawesome|bootstrapcdn"
+    r"|cloudflareinsights|adsboosters|iconfinder|/login|/register)"
+)
 
-# Ads, CDNs and navigation links that must never be treated as mirror servers.
-HUB_SKIP_DOMAINS = [
-    "hubcloud.cx/drive",
-    "hubcloud.fans",
-    "HDhub4u",
-    "hdhub4u",
-    "one.one.one",
-    "tinyurl",
-    "t.me",
-    "google.com",
-    "snvhost",
-    "jquery",
-    "jsdelivr",
-    "fontawesome",
-    "googleapis",
-    "bootstrapcdn",
-    "bonuscaf",
-    "winexch",
-]
+HUB_INTERSTITIAL_HOSTS = ("pixel.hubcloud", "gamerxyt.com", "fastdl-one.pages.dev")
 
 
 def direct_link_generator(link):
@@ -2644,11 +2622,16 @@ def instagram(link: str) -> str:
 
 
 # ============================ GDFlix & HubCloud family ============================
+#
+# Both families hand out short-lived, single-use tokens and frequently return a
+# 403 or an HTML interstitial in place of the file. Every candidate link is
+# therefore range-probed for real bytes before being accepted, and each retry
+# re-walks the page chain so it gets a fresh token.
 
 
 def is_gdflix(url: str):
     netloc = urlparse(url).netloc.lower()
-    return "gdflix" in netloc or any(h in netloc for h in GDFLIX_DOMAINS)
+    return any(h in netloc for h in GDFLIX_DOMAINS)
 
 
 def is_hubcloud(url: str):
@@ -2670,30 +2653,19 @@ def is_hblinks(url: str):
     return "hblinks" in urlparse(url).netloc.lower()
 
 
-def _base_url(url: str):
-    p = urlparse(url)
-    return f"{p.scheme}://{p.netloc}"
-
-
-def _hub_classify_server(text: str):
-    t = text.lower()
-    for label, keywords in HUB_SERVER_LABELS:
-        if any(k in t for k in keywords):
-            return label
-    return None
-
-
 def _hub_size_to_bytes(size_str):
-    if not size_str or size_str == "Unknown":
+    if not size_str:
         return 0
-    size_str = str(size_str).lower().strip()
-    m = match(r"([\d\.]+)\s*(kb|mb|gb|tb|b)?", size_str)
+    text = str(size_str).strip().lower()
+    if text in ("unknown", "nan", "n/a"):
+        return 0
+    m = match(r"([\d.]+)\s*(kb|mb|gb|tb|b)?", text)
     if not m:
         return 0
-    val = float(m.group(1))
-    unit = m.group(2)
-    if not unit:
-        return int(val)
+    try:
+        value = float(m.group(1))
+    except ValueError:
+        return 0
     factors = {
         "b": 1,
         "kb": 1024,
@@ -2701,26 +2673,19 @@ def _hub_size_to_bytes(size_str):
         "gb": 1073741824,
         "tb": 1099511627776,
     }
-    return int(val * factors.get(unit, 1))
-
-
-def _hub_pick_server(servers):
-    """Pick the fastest available mirror, falling back through HUB_SERVER_ORDER."""
-    for label in HUB_SERVER_ORDER:
-        if label in servers:
-            return servers[label]
-    return next(iter(servers.values()), None)
+    return int(value * factors.get(m.group(2) or "b", 1))
 
 
 def _cf_session():
-    """A curl_cffi session impersonating Chrome; required to pass GDFlix/HubCloud TLS checks."""
+    """curl_cffi session impersonating Chrome; plain requests is TLS-fingerprinted away."""
     try:
         from curl_cffi.requests import Session as CFSession
     except ImportError as e:
         raise DirectDownloadLinkException(
-            "ERROR: curl_cffi is required for GDFlix/HubCloud links"
+            "ERROR: curl_cffi is required for GDFlix/HubCloud links "
+            "(pip install curl-cffi)"
         ) from e
-    return CFSession(impersonate="chrome120")
+    return CFSession(impersonate="chrome124")
 
 
 def _soup(text):
@@ -2733,518 +2698,790 @@ def _soup(text):
     return BeautifulSoup(text, "html.parser")
 
 
-def _hub_fetch(session, url, retries=3, wait=4, follow=True):
+def _hub_fetch(session, url, referer=None, follow=True, timeout=45, retries=3):
+    """GET with retries. 4xx bodies are returned rather than raised, because a
+    403 page can still carry the redirect target we need."""
+    last = None
     for attempt in range(1, retries + 1):
+        headers = dict(HEADERS)
+        if referer:
+            headers["Referer"] = referer
         try:
-            r = session.get(url, headers=HEADERS, timeout=30, allow_redirects=follow)
-            if r.status_code in (200, 301, 302):
-                return r
-            if r.status_code == 404:
-                raise DirectDownloadLinkException(f"ERROR: Not found (404): {url}")
-            LOGGER.info(f"HTTP {r.status_code} for {url} — retrying in {wait}s")
-        except DirectDownloadLinkException:
-            raise
+            res = session.get(
+                url, headers=headers, timeout=timeout, allow_redirects=follow
+            )
+            if res.status_code in (200, 301, 302, 303, 307, 308, 403, 404, 410):
+                return res
+            last = f"HTTP {res.status_code}"
         except Exception as e:
-            LOGGER.info(f"Fetch error for {url}: {e}")
+            last = e.__class__.__name__
         if attempt < retries:
-            sleep(wait)
-    raise DirectDownloadLinkException(f"ERROR: All {retries} attempts failed for {url}")
+            sleep(4 * attempt)
+    raise DirectDownloadLinkException(f"ERROR: Failed to fetch {url} ({last})")
 
 
-def _gdf_get_file_links(session, url):
-    r = _hub_fetch(session, url)
-    soup = _soup(r.text)
-    links = {"instant": "", "r2": "", "telegram": "", "gofile": "", "multiup": ""}
-    filename = "Unknown"
-    size = "Unknown"
-    if soup.title:
-        filename = soup.title.text.replace("GDFlix |", "").strip()
-    for li in soup.find_all("li"):
-        txt = li.get_text(" ", strip=True)
-        if txt.startswith("Size :"):
-            size = txt.split("Size :", 1)[1].split("|")[0].strip()
-    for a in soup.find_all("a", href=True):
-        href = urljoin(url, a["href"])
-        text = a.get_text(" ", strip=True).lower()
-        if "instant dl" in text:
-            links["instant"] = href
-        elif "cloud download" in text:
-            links["r2"] = href
-        elif "telegram" in text:
-            links["telegram"] = href
-        elif "gofile" in text:
-            links["gofile"] = href
-        if "validate.multiup2.workers.dev" in href:
-            links["multiup"] = href
-    return filename, size, links
+def _filename_from_cd(content_disposition):
+    if not content_disposition:
+        return None
+    if m := search(r"filename\*=(?:UTF-8'')?([^;]+)", content_disposition):
+        return unquote(m.group(1).strip().strip("\"'")) or None
+    if m := search(r'filename="?([^";]+)"?', content_disposition):
+        return unquote(m.group(1).strip()) or None
+    return None
 
 
-def _gdf_get_mirror_links(session, url):
-    mirrors = {}
-    if not url:
-        return mirrors
+def _validate_direct_link(
+    session, url, referer=None, expected_size=0, probe_bytes=262144
+):
+    """Range-probe a URL to prove it serves the file.
+
+    Returns {"url", "size", "filename"} when the response is a real byte stream,
+    or None when it is a 403/404, an HTML interstitial, or the wrong file.
+    """
+    headers = dict(HEADERS)
+    headers["Range"] = f"bytes=0-{probe_bytes - 1}"
+    headers["Accept"] = "*/*"
+    if referer:
+        headers["Referer"] = referer
     try:
-        r = _hub_fetch(session, url)
-        soup = _soup(r.text)
-        for tag in soup.find_all("a", class_="host"):
-            name = tag.get("namehost") or tag.get("nameHost", "").strip()
-            link = tag.get("link") or tag.get("href", "").strip()
-            validity = tag.get("validity", "").strip().lower()
-            if not name or not link or link.startswith("/"):
-                continue
-            mirrors[name] = {"url": link, "valid": validity == "valid"}
-        if not mirrors:
-            html = r.text
-            pats = {
-                "Megaup": r'(?i)https?://(?:www\.)?megaup\.net/[^\s"\'&]+',
-                "1fichier": r'(?i)https?://(?:www\.)?1fichier\.com/\?[^\s"\'&]+',
-                "Pixeldrain": r'(?i)https?://pixeldrain\.com/[^\s"\'&]+',
-                "Mediafire": r'(?i)https?://(?:www\.)?mediafire\.com/[^\s"\'&]+',
-                "BuzzHeavier": r'(?i)https?://(?:www\.)?buzzheavier\.com/[^\s"\'&]+',
-                "GoFile": r'(?i)https?://gofile\.io/[^\s"\'&]+',
-            }
-            for name, pat in pats.items():
-                if m := search(pat, html):
-                    mirrors[name] = {"url": m.group(0), "valid": True}
-    except Exception as e:
-        LOGGER.info(f"GDFlix mirror fetch failed: {e}")
-    return mirrors
-
-
-def _gdf_resolve_instant_dl(session, instant_url):
-    if not instant_url:
-        return ""
-    try:
-        r = _hub_fetch(session, instant_url, follow=False)
-        if r.status_code in (301, 302):
-            loc = r.headers.get("Location", "")
-            if loc:
-                gdrive = parse_qs(urlparse(loc).query).get("url", [""])[0]
-                if "googleusercontent.com" in gdrive or "drive.google.com" in gdrive:
-                    return gdrive
-                if "googleusercontent.com" in loc or "drive.google.com" in loc:
-                    return loc
-        html = r.text
-        for a in _soup(html).find_all("a", href=True):
-            href = a["href"].strip()
-            if "googleusercontent.com" in href or "drive.google.com" in href:
-                return href
-        if m := search(
-            r'(?i)https?://[^\s"\'<>\\]*(?:googleusercontent\.com|drive\.google\.com)/[^\s"\'<>\\]+',
-            html,
-        ):
-            return m.group(0)
-    except Exception as e:
-        LOGGER.info(f"GDFlix instant DL resolve failed: {e}")
-    return ""
-
-
-def _gdf_get_pack_info(session, url):
-    r = _hub_fetch(session, url)
-    soup = _soup(r.text)
-    root = _base_url(url)
-    title = "Unknown Pack"
-    if h3 := soup.find("h3"):
-        title = sub(r"\s*\[.*?\]\s*$", "", h3.get_text(" ", strip=True)).strip()
-    total_size = "Unknown"
-    size_el = soup.find(id="pack_size")
-    if size_el and size_el.get("data-total"):
-        total_size = size_el["data-total"]
-    files = []
-    for li in soup.find_all("li", class_="list-group-item"):
-        a = li.find("a", href=True)
-        if not a:
-            continue
-        href = a["href"].strip()
-        if "/file/" not in href:
-            continue
-        raw = a.get_text(strip=True)
-        size_m = search(r"\[([^\]]+)\]\s*$", raw)
-        files.append(
-            {
-                "name": sub(r"\s*\[.*?\]\s*$", "", raw).strip(),
-                "size": size_m.group(1) if size_m else "",
-                "url": href if href.startswith("http") else root + href,
-            }
+        res = session.get(
+            url, headers=headers, timeout=60, stream=True, allow_redirects=True
         )
-    return title, total_size, files
+    except Exception as e:
+        LOGGER.info(f"link check error ({e.__class__.__name__}): {url[:100]}")
+        return None
+    try:
+        if res.status_code not in (200, 206):
+            LOGGER.info(f"link check HTTP {res.status_code}: {url[:100]}")
+            return None
+        content_type = (res.headers.get("content-type") or "").lower()
+        if "text/html" in content_type or "text/plain" in content_type:
+            LOGGER.info(f"link check got a web page, not a file: {url[:100]}")
+            return None
+        received = 0
+        for chunk in res.iter_content(65536):
+            received += len(chunk)
+            if received >= probe_bytes:
+                break
+        if received < 65536:
+            LOGGER.info(f"link check truncated at {received}B: {url[:100]}")
+            return None
 
+        total = 0
+        content_range = res.headers.get("content-range") or ""
+        if "/" in content_range:
+            try:
+                total = int(content_range.rsplit("/", 1)[1])
+            except ValueError:
+                total = 0
+        if not total:
+            try:
+                total = int(res.headers.get("content-length") or 0)
+            except ValueError:
+                total = 0
 
-def _gdflix_file_resolver(session, url):
-    _filename, _size, links = _gdf_get_file_links(session, url)
-
-    if gdrive_link := _gdf_resolve_instant_dl(session, links.get("instant")):
-        return gdrive_link
-
-    gofile_url = links.get("gofile") or ""
-    if not gofile_url and (mirror_url := links.get("multiup")):
-        mirrors = _gdf_get_mirror_links(session, mirror_url)
-        if "GoFile" in mirrors:
-            gofile_url = mirrors["GoFile"].get("url") or ""
-
-    if gofile_url:
+        # Guard against a mirror serving a different (usually smaller) file.
+        if expected_size and total:
+            tolerance = max(expected_size * 0.02, 1048576)
+            if abs(total - expected_size) > tolerance:
+                LOGGER.info(
+                    f"link check size mismatch: got {total}, "
+                    f"expected {expected_size}: {url[:100]}"
+                )
+                return None
+        return {
+            "url": res.url,
+            "size": total or expected_size,
+            "filename": _filename_from_cd(res.headers.get("content-disposition")),
+        }
+    finally:
         try:
-            return gofile(gofile_url)
-        except Exception as e:
+            res.close()
+        except Exception:
+            pass
+
+
+def _hub_unwrap_interstitial(session, url, referer=None, depth=0):
+    """Follow a "generating your link" page to the URL it is about to redirect to."""
+    host = urlparse(url).hostname or ""
+    if depth > 2 or not any(h in host for h in HUB_INTERSTITIAL_HOSTS):
+        return url
+    try:
+        res = _hub_fetch(session, url, referer=referer, follow=True, timeout=60)
+    except DirectDownloadLinkException:
+        return url
+
+    # pixel.hubcloud.cx bounces to gamerxyt.com/dl.php?link=<real url>
+    query = parse_qs(urlparse(res.url).query)
+    for param in ("link", "url"):
+        if candidate := (query.get(param) or [""])[0]:
+            return _hub_unwrap_interstitial(
+                session, unquote(candidate), referer=res.url, depth=depth + 1
+            )
+
+    for anchor in _soup(res.text).find_all("a", href=True):
+        href = anchor["href"].strip()
+        if any(
+            k in href
+            for k in (
+                "googleusercontent",
+                "workers.dev",
+                "storage.googleapis",
+                "r2.cloudflarestorage",
+            )
+        ):
+            return href
+    if m := search(r"https?://[^\s\"'<>]*googleusercontent\.com[^\s\"'<>]+", res.text):
+        return m.group(0)
+    return url
+
+
+def _hub_rank_label(text):
+    lowered = (text or "").lower()
+    for pattern, rank in HUB_SERVER_RANK:
+        if search(pattern, lowered):
+            return rank
+    return 95
+
+
+def _hub_collect_candidates(session, drive_url):
+    """Walk a HubCloud /drive/ page to its token page and list every mirror button.
+
+    Returns (info, token_url, candidates) with candidates sorted fastest-first.
+    """
+    res = _hub_fetch(session, drive_url)
+    page = _soup(res.text)
+
+    info = {"filename": None, "size": 0}
+    if header := page.find("div", class_="card-header"):
+        info["filename"] = header.get_text(strip=True) or None
+    if not info["filename"] and page.title:
+        info["filename"] = page.title.text.strip() or None
+    for item in page.find_all("li", class_="list-group-item"):
+        text = item.get_text(" ", strip=True)
+        if "File Size" in text and (tag := item.find("i")):
+            info["size"] = _hub_size_to_bytes(tag.get_text(strip=True))
+
+    token_url = None
+    for anchor_id in ("download", "downloadBtn"):
+        found = page.find("a", id=anchor_id)
+        if found and (found.get("href") or "#") != "#":
+            token_url = found["href"].strip()
+            break
+    if not token_url:
+        # Some skins only expose the token through the inline redirect script.
+        if m := search(r"var\s+url\s*=\s*['\"]([^'\"]+)['\"]", res.text):
+            token_url = m.group(1).strip()
+    if not token_url:
+        return info, None, []
+
+    token_url = urljoin(res.url, token_url)
+    token_res = _hub_fetch(session, token_url, referer=res.url)
+    token_page = _soup(token_res.text)
+
+    candidates = []
+    seen = set()
+    for anchor in token_page.find_all("a", href=True):
+        classes = anchor.get("class") or []
+        if not any("btn" in c for c in classes):
+            continue
+        href = anchor["href"].strip()
+        if not href.startswith("http") or href in seen:
+            continue
+        if search(HUB_REJECT_HREF, href):
+            continue
+        seen.add(href)
+        label = anchor.get_text(" ", strip=True)
+        candidates.append(
+            {"rank": _hub_rank_label(label), "label": label or "Server", "url": href}
+        )
+    candidates.sort(key=lambda c: c["rank"])
+    return info, token_url, candidates
+
+
+def hubcloud_file(drive_url, expected_size=0, expected_name=None):
+    """Resolve one HubCloud file to a validated direct link.
+
+    Tokens are single-use, so each candidate gets a fresh session and a freshly
+    walked page chain; a candidate is only accepted once it has served bytes.
+    """
+    with _cf_session() as session:
+        info, token_url, candidates = _hub_collect_candidates(session, drive_url)
+        if not candidates:
             raise DirectDownloadLinkException(
-                f"ERROR: Instant DL failed and GoFile fallback failed: {e}"
-            ) from e
+                "ERROR: HubCloud page exposed no download servers"
+            )
+        want = expected_size or info["size"]
+        LOGGER.info(
+            f"HubCloud {drive_url}: {len(candidates)} server(s) "
+            f"-> {[c['label'][:24] for c in candidates]}"
+        )
+
+        failures = []
+        for index, candidate in enumerate(candidates):
+            if index == 0:
+                session_for_try, token, target = session, token_url, candidate["url"]
+                owns_session = False
+            else:
+                # Re-walk for a fresh single-use token before each retry.
+                session_for_try = _cf_session()
+                owns_session = True
+                try:
+                    _i, token, fresh = _hub_collect_candidates(
+                        session_for_try, drive_url
+                    )
+                    match_by_rank = next(
+                        (c for c in fresh if c["rank"] == candidate["rank"]), None
+                    )
+                    target = (match_by_rank or candidate)["url"]
+                except DirectDownloadLinkException as e:
+                    session_for_try.close()
+                    failures.append(f"{candidate['label']}: {e}")
+                    continue
+            try:
+                final = _hub_unwrap_interstitial(session_for_try, target, referer=token)
+                checked = _validate_direct_link(
+                    session_for_try, final, referer=token, expected_size=want
+                )
+                if checked:
+                    LOGGER.info(
+                        f"HubCloud resolved via {candidate['label']}: "
+                        f"{checked['filename'] or expected_name}"
+                    )
+                    return {
+                        "url": checked["url"],
+                        "filename": checked["filename"]
+                        or expected_name
+                        or info["filename"]
+                        or "file",
+                        "size": checked["size"] or want,
+                        "via": candidate["label"],
+                    }
+                failures.append(f"{candidate['label']}: link did not serve bytes")
+            finally:
+                if owns_session:
+                    session_for_try.close()
 
     raise DirectDownloadLinkException(
-        "ERROR: Instant DL failed and no GoFile link found!"
+        "ERROR: All HubCloud servers failed: " + "; ".join(failures[:4])
     )
 
 
-def _hub_get_pack_info(session, url):
-    r = _hub_fetch(session, url)
-    root = _base_url(url)
-    title = "Unknown Pack"
-    total_size = "Unknown"
-    files = []
-    if m := search(r"const packData\s*=\s*JSON\.parse\(`(.*?)`\);", r.text):
-        try:
-            data = loads(m.group(1))
-            title = data.get("pack", {}).get("pack_name", title)
-            pack_files = data.get("files", [])
-            total_size = str(sum(int(f.get("file_size", 0)) for f in pack_files))
-            for file in pack_files:
-                files.append(
-                    {
-                        "name": file.get("file_name", "Unknown"),
-                        "size": str(int(file.get("file_size", 0))),
-                        "url": f"{root}/video/{file.get('share_id', '')}",
-                    }
-                )
-        except Exception as e:
-            LOGGER.info(f"HubCloud pack JSON decode error: {e}")
-    return title, total_size, files
-
-
-def _hub_parse_hblinks(session, url):
-    r = _hub_fetch(session, url)
-    soup = _soup(r.text)
-    title = soup.title.text.strip() if soup.title else "Unknown"
-    for s in ["– HUBLinks", "- HUBLinks", "| HUBLinks"]:
-        title = title.replace(s, "").strip()
-    groups = []
-    for tag in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]):
-        valid_links = [
-            a["href"].strip()
-            for a in tag.find_all("a", href=True)
-            if is_hubcloud(a["href"].strip())
-            or is_hubdrive(a["href"].strip())
-            or is_hubcdn(a["href"].strip())
-        ]
-        if not valid_links:
-            continue
-        qual = tag.get_text(" ", strip=True)
-        for sep_str in ["–", "-", "|"]:
-            if sep_str in qual:
-                qual = qual.split(sep_str)[0].strip()
-        chosen = next((l for l in valid_links if is_hubcloud(l)), valid_links[0])
-        groups.append({"quality": qual, "url": chosen, "all_urls": valid_links})
-    return title, groups
-
-
-def _hub_parse_drive(session, url, _depth=0):
-    r = _hub_fetch(session, url)
-    soup = _soup(r.text)
-    # Some drive pages only link onward to the actual HubCloud server page.
-    if _depth < 3:
-        for a in soup.find_all("a", href=True):
-            href = a["href"].strip()
-            if "hubcloud server" in a.get_text(strip=True).lower() and href != url:
-                return _hub_parse_drive(session, href, _depth + 1)
-
-    info = {
-        "filename": "Unknown",
-        "size": "Unknown",
-        "filetype": "Unknown",
-        "date": "Unknown",
-        "token_url": "",
-        "is_direct": False,
-    }
-    if header := soup.find("div", class_="card-header"):
-        info["filename"] = header.get_text(strip=True)
-    for li in soup.find_all("li", class_="list-group-item"):
-        i_tag = li.find("i")
-        val = i_tag.get_text(strip=True) if i_tag else ""
-        text = li.get_text(" ", strip=True)
-        if "File Size" in text:
-            info["size"] = val
-        elif "File Type" in text:
-            info["filetype"] = val
-        elif "Share Date" in text:
-            info["date"] = val
-
-    dl = None
-    for a_id in ["download", "downloadBtn"]:
-        found = soup.find("a", id=a_id)
-        if found and found.get("href") and found.get("href") != "#":
-            dl = found
+def _gdf_page_info(session, file_url):
+    """Read a GDFlix /file/ page: name, size, and every action button on it."""
+    res = _hub_fetch(session, file_url)
+    page = _soup(res.text)
+    name = None
+    if page.title:
+        name = page.title.text.replace("GDFlix |", "").strip() or None
+    size = 0
+    for item in page.find_all("li"):
+        text = item.get_text(" ", strip=True)
+        if text.startswith("Size :"):
+            size = _hub_size_to_bytes(text.split("Size :", 1)[1].split("|")[0].strip())
             break
-
-    if dl:
-        href = dl["href"].strip()
-        info["token_url"] = href
-        info["is_direct"] = not ("hubcloud.php" in href or "host=" in href)
-        return info
-
-    for a in soup.find_all("a", href=True):
-        href = a["href"].strip()
-        if "hubcloud.php" in href or "host=" in href:
-            info["token_url"] = href
-            return info
-
-    video_dl = soup.find(string=lambda t: t and "Generate Direct Download Link" in t)
-    if video_dl and video_dl.find_parent("a"):
-        info["token_url"] = video_dl.find_parent("a")["href"].strip()
-    elif m := search(r"var\s+url\s*=\s*['\"]([^'\"]+)['\"]", r.text):
-        info["token_url"] = m.group(1)
-    return info
+    buttons = []
+    for anchor in page.find_all("a", href=True):
+        if not any("btn" in c for c in (anchor.get("class") or [])):
+            continue
+        buttons.append(
+            {
+                "label": anchor.get_text(" ", strip=True),
+                "url": urljoin(res.url, anchor["href"].strip()),
+            }
+        )
+    return {
+        "final_url": res.url,
+        "root": f"https://{urlparse(res.url).hostname}",
+        "name": name,
+        "size": size,
+        "buttons": buttons,
+    }
 
 
-def _hub_resolve_servers(session, token_url):
-    if not token_url:
-        return {}
-    try:
-        r = _hub_fetch(session, token_url, follow=True)
-        soup = _soup(r.text)
+def _gdf_instant_dl(session, instant_url, referer, expected_size=0):
+    """Resolve the Instant DL button.
 
-        for a_id in ["download", "downloadBtn"]:
-            found = soup.find("a", id=a_id)
-            if found and found.get("href") and found.get("href") != "#":
-                href = found["href"].strip()
-                if not ("hubcloud.php" in href or "host=" in href):
-                    return {"Direct": href}
-                break
+    Two skins exist: `instant.busycdn.xyz` 302s straight to a wrapper carrying
+    `?url=<googleusercontent link>`, while `cdn.foxcloud.rest` serves a JS
+    bounce page that has to be followed one more hop.
+    """
+    res = _hub_fetch(session, instant_url, referer=referer, follow=False, timeout=60)
+    target = ""
+    if location := res.headers.get("Location", ""):
+        target = (parse_qs(urlparse(location).query).get("url") or [""])[0]
+        target = unquote(target) if target else (
+            location if "googleusercontent" in location else ""
+        )
 
-        servers = {}
-        for a in soup.find_all("a", href=True):
-            href = a["href"].strip()
-            if not href.startswith("http"):
-                continue
-            if any(s in href for s in HUB_SKIP_DOMAINS):
-                continue
-            if label := _hub_classify_server(a.get_text(strip=True)):
-                servers[label] = href
-            elif any(ext in href for ext in [".mkv", ".mp4", ".zip", ".rar"]):
-                servers.setdefault("Direct", href)
-        return servers
-    except Exception as e:
-        LOGGER.info(f"Could not resolve HubCloud server links: {e}")
-        return {}
-
-
-def _hubcloud_file_resolver(session, url):
-    info = _hub_parse_drive(session, url)
-    filename = info.get("filename") or "File"
-    size = _hub_size_to_bytes(info.get("size"))
-
-    if not info.get("token_url"):
-        return url, filename, size
-    if info.get("is_direct"):
-        return info["token_url"], filename, size
-
-    servers = _hub_resolve_servers(session, info["token_url"])
-    resolved_url = _hub_pick_server(servers) or url
-
-    # Intermediate pages (e.g. pixel.hubcloud.cx) still need one more hop.
-    if (
-        "googleusercontent.com" not in resolved_url
-        and "r2.cloudflarestorage.com" not in resolved_url
-    ):
-        try:
-            fsoup = _soup(_hub_fetch(session, resolved_url, follow=True).text)
-            for a_id in ["download", "downloadBtn"]:
-                fdl = fsoup.find("a", id=a_id)
-                if fdl and fdl.get("href") and fdl.get("href") != "#":
-                    resolved_url = fdl["href"].strip()
-                    break
-            if "googleusercontent.com" not in resolved_url:
-                for a in fsoup.find_all("a", href=True):
-                    if "googleusercontent.com" in a["href"]:
-                        resolved_url = a["href"].strip()
+    if not target and res.text:
+        if m := search(r'window\.location\.href\s*=\s*["\']([^"\']+)["\']', res.text):
+            hop = _hub_fetch(
+                session,
+                urljoin(res.url, m.group(1)),
+                referer=res.url,
+                follow=True,
+                timeout=60,
+            )
+            if "text/html" not in (hop.headers.get("content-type") or "").lower():
+                target = hop.url
+            else:
+                for anchor in _soup(hop.text).find_all("a", href=True):
+                    href = anchor["href"].strip()
+                    if any(
+                        k in href
+                        for k in (
+                            "video-downloads.googleusercontent",
+                            "workers.dev",
+                            "storage.googleapis",
+                        )
+                    ):
+                        target = href
                         break
-        except Exception as e:
-            LOGGER.info(f"HubCloud final hop failed, using {resolved_url}: {e}")
 
-    return resolved_url, filename, size
+    if not target and res.text:
+        if m := search(
+            r"https?://[^\s\"'<>]*video-downloads\.googleusercontent\.com[^\s\"'<>]+",
+            res.text,
+        ):
+            target = m.group(0)
+    if not target:
+        return None
+    return _validate_direct_link(
+        session,
+        target,
+        referer="https://fastdl-one.pages.dev/",
+        expected_size=expected_size,
+    )
+
+
+def _gdf_cloud_chain(session, cloud_url, root, expected_size=0, max_wait=300):
+    """ZipDisk/Cloud path: POST action=cloud, poll the task, then read the final page.
+
+    The task copies the file to a worker CDN, so it can take a couple of minutes
+    on a cold file; a warm file reports SUCCEEDED on the first poll.
+    """
+    cloud_res = _hub_fetch(session, cloud_url, timeout=60)
+    key = search(
+        r'formData\.append\("key",\s*"([0-9a-fA-F]{20,})"\)', cloud_res.text
+    )
+    if not key:
+        raise DirectDownloadLinkException("ERROR: GDFlix cloud key not found")
+    host = urlparse(cloud_res.url).hostname
+    try:
+        post_res = session.post(
+            cloud_res.url,
+            headers={
+                **HEADERS,
+                "x-token": host,
+                "Referer": cloud_res.url,
+                "Accept": "*/*",
+            },
+            data={"action": "cloud", "key": key.group(1), "action_token": ""},
+            timeout=60,
+        )
+        payload = post_res.json()
+    except Exception as e:
+        raise DirectDownloadLinkException(
+            f"ERROR: GDFlix cloud request failed ({e.__class__.__name__})"
+        ) from e
+    if payload.get("error") or not payload.get("url"):
+        raise DirectDownloadLinkException(
+            f"ERROR: GDFlix cloud: {payload.get('message') or 'no task url'}"
+        )
+
+    task_url = urljoin(root, payload["url"])
+    poll_url = task_url + ("&" if "?" in task_url else "?") + "xhr=1"
+    deadline = time() + max_wait
+    redirect = None
+    while time() < deadline:
+        try:
+            status = session.get(
+                poll_url,
+                headers={
+                    **HEADERS,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Accept": "application/json",
+                    "Referer": task_url,
+                },
+                timeout=60,
+            ).json()
+        except Exception:
+            status = {}
+        if status.get("redirect"):
+            redirect = urljoin(root, status["redirect"])
+            break
+        LOGGER.info(
+            f"GDFlix cloud task {status.get('percent', '?')}% "
+            f"{status.get('status', 'pending')}"
+        )
+        sleep(6)
+    if not redirect:
+        raise DirectDownloadLinkException(
+            "ERROR: GDFlix cloud task did not finish in time"
+        )
+
+    final = _hub_fetch(session, redirect, referer=task_url, timeout=60)
+    for anchor in _soup(final.text).find_all("a", href=True):
+        if not any("btn" in c for c in (anchor.get("class") or [])):
+            continue
+        href = anchor["href"].strip()
+        if not href.startswith("http") or search(HUB_REJECT_HREF, href):
+            continue
+        if checked := _validate_direct_link(
+            session, href, referer=redirect, expected_size=expected_size
+        ):
+            return checked
+    raise DirectDownloadLinkException(
+        "ERROR: GDFlix cloud page had no working download link"
+    )
+
+
+def _gdf_mirrors(session, mirror_url):
+    """Parse a multiup/goflix mirror list into {host: {url, valid}}."""
+    mirrors = {}
+    try:
+        res = _hub_fetch(session, mirror_url, timeout=60)
+    except DirectDownloadLinkException as e:
+        LOGGER.info(f"GDFlix mirror list unavailable: {e}")
+        return mirrors
+    for tag in _soup(res.text).find_all("a", class_="host"):
+        name = (tag.get("namehost") or tag.get("nameHost") or "").strip()
+        link = (tag.get("link") or tag.get("href") or "").strip()
+        if not name or not link or link.startswith("/"):
+            continue
+        mirrors[name] = {
+            "url": link,
+            "valid": (tag.get("validity") or "").strip().lower() == "valid",
+        }
+    return mirrors
+
+
+def gdflix_file(file_url, expected_size=0, expected_name=None):
+    """Resolve one GDFlix file, trying Instant DL, then Cloud/ZipDisk, then mirrors."""
+    failures = []
+    with _cf_session() as session:
+        info = _gdf_page_info(session, file_url)
+        name = expected_name or info["name"]
+        size = expected_size or info["size"]
+        LOGGER.info(
+            f"GDFlix {file_url}: buttons -> {[b['label'][:24] for b in info['buttons']]}"
+        )
+
+        def _result(checked, via):
+            return {
+                "url": checked["url"],
+                "filename": checked["filename"] or name or "file",
+                "size": checked["size"] or size,
+                "via": via,
+            }
+
+        for button in info["buttons"]:
+            if "instant" not in button["label"].lower():
+                continue
+            try:
+                if checked := _gdf_instant_dl(
+                    session, button["url"], info["final_url"], size
+                ):
+                    return _result(checked, "Instant DL")
+                failures.append("Instant DL: link did not serve bytes")
+            except DirectDownloadLinkException as e:
+                failures.append(f"Instant DL: {e}")
+
+        cloud = next((b["url"] for b in info["buttons"] if "/cloud/" in b["url"]), None)
+        if cloud:
+            try:
+                return _result(
+                    _gdf_cloud_chain(session, cloud, info["root"], size), "Cloud"
+                )
+            except DirectDownloadLinkException as e:
+                failures.append(f"Cloud: {e}")
+
+        mirror_url = next(
+            (
+                b["url"]
+                for b in info["buttons"]
+                if "mirror" in b["label"].lower()
+                or "gofile" in b["label"].lower()
+                or "multiup" in b["url"]
+                or "/mirror/" in b["url"]
+            ),
+            None,
+        )
+        if mirror_url:
+            mirrors = _gdf_mirrors(session, mirror_url)
+            LOGGER.info(
+                f"GDFlix mirrors: {[(k, v['valid']) for k, v in mirrors.items()]}"
+            )
+            for host, mirror in mirrors.items():
+                if not mirror["valid"] or "gofile" in host.lower():
+                    continue
+                if checked := _validate_direct_link(
+                    session, mirror["url"], referer=mirror_url, expected_size=size
+                ):
+                    return _result(checked, f"Mirror: {host}")
+                failures.append(f"Mirror {host}: link did not serve bytes")
+            # GoFile needs its own API dance, so hand it to the GoFile resolver.
+            for host, mirror in mirrors.items():
+                if "gofile" not in host.lower():
+                    continue
+                try:
+                    resolved = gofile(mirror["url"])
+                except Exception as e:
+                    failures.append(f"GoFile: {e}")
+                    continue
+                contents = (
+                    resolved.get("contents") if isinstance(resolved, dict) else None
+                )
+                if contents:
+                    entry = contents[0]
+                    return {
+                        "url": entry["url"],
+                        "filename": entry.get("filename") or name or "file",
+                        "size": resolved.get("total_size") or size,
+                        "via": "GoFile mirror",
+                        "header": resolved.get("header"),
+                    }
+
+    raise DirectDownloadLinkException(
+        "ERROR: All GDFlix strategies failed: " + "; ".join(failures[:4])
+    )
+
+
+def _resolve_with_retries(resolver, member, attempts=3):
+    """Run a per-file resolver, retrying transient token/CDN failures."""
+    last = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return resolver(
+                member["url"],
+                expected_size=member.get("size") or 0,
+                expected_name=member.get("name"),
+            ), None
+        except DirectDownloadLinkException as e:
+            last = str(e)
+        except Exception as e:
+            last = f"{e.__class__.__name__}: {e}"
+        if attempt < attempts:
+            sleep(5 * attempt)
+    return None, last
+
+
+def _resolve_pack(resolver, title, members, workers=4, attempts=3):
+    """Resolve every member of a pack, in parallel, without dropping failures silently.
+
+    A member is only omitted after `attempts` full retries, and every omission is
+    logged by name so the shortfall is visible rather than silent.
+    """
+    results = [None] * len(members)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(_resolve_with_retries, resolver, member, attempts): i
+            for i, member in enumerate(members)
+        }
+        for future in as_completed(futures):
+            index = futures[future]
+            try:
+                results[index] = future.result()
+            except Exception as e:
+                results[index] = (None, f"{e.__class__.__name__}: {e}")
+
+    details = {"contents": [], "title": title, "total_size": 0}
+    failed = []
+    for member, outcome in zip(members, results):
+        resolved, error = outcome or (None, "no result")
+        if not resolved:
+            failed.append((member.get("name") or member["url"], error))
+            continue
+        details["contents"].append(
+            {
+                "url": resolved["url"],
+                "filename": resolved["filename"] or member.get("name") or "file",
+                "path": "",
+            }
+        )
+        details["total_size"] += resolved["size"] or member.get("size") or 0
+        if resolved.get("header") and "header" not in details:
+            details["header"] = resolved["header"]
+
+    if failed:
+        for name, error in failed:
+            LOGGER.error(f"Pack member unresolved after retries: {name} — {error}")
+    if not details["contents"]:
+        summary = "; ".join(f"{n}: {e}" for n, e in failed[:3])
+        raise DirectDownloadLinkException(
+            f"ERROR: No file in this pack could be resolved. {summary}"
+        )
+    if failed:
+        missing = ", ".join(n for n, _ in failed[:10])
+        if len(failed) > 10:
+            missing += f", and {len(failed) - 10} more"
+        LOGGER.error(
+            f"Pack '{title}': {len(details['contents'])}/{len(members)} files "
+            f"resolved, {len(failed)} unavailable ({missing})"
+        )
+        # Surfaced to the user by the direct downloader so a short pack is never
+        # silently treated as complete.
+        details["warning"] = (
+            f"{len(failed)} of {len(members)} files in this pack could not be "
+            f"resolved and were skipped:\n{missing}"
+        )
+    else:
+        LOGGER.info(f"Pack '{title}': all {len(members)} files resolved")
+    return details
+
+
+def _gdf_pack_members(session, pack_url):
+    """Read a GDFlix /pack/ page into (title, [{name, size, url}])."""
+    res = _hub_fetch(session, pack_url)
+    page = _soup(res.text)
+    root = f"https://{urlparse(res.url).hostname}"
+    title = "GDFlix Pack"
+    if heading := page.find("h3"):
+        title = (
+            sub(r"\s*\[.*?\]\s*$", "", heading.get_text(" ", strip=True)).strip()
+            or title
+        )
+    elif page.title:
+        title = page.title.text.replace("GDFlix |", "").strip() or title
+
+    members = []
+    seen = set()
+    for item in page.find_all("li", class_="list-group-item"):
+        anchor = item.find("a", href=True)
+        if not anchor or "/file/" not in anchor["href"]:
+            continue
+        url = urljoin(root, anchor["href"].strip())
+        if url in seen:
+            continue
+        seen.add(url)
+        raw = anchor.get_text(strip=True)
+        size_match = search(r"\[([^\]]+)\]\s*$", raw)
+        members.append(
+            {
+                "name": sub(r"\s*\[.*?\]\s*$", "", raw).strip() or None,
+                "size": _hub_size_to_bytes(size_match.group(1)) if size_match else 0,
+                "url": url,
+            }
+        )
+    return title, members
+
+
+def _hub_pack_members(session, pack_url):
+    """Read a HubCloud pack page. The file list lives in an inline packData JSON blob."""
+    res = _hub_fetch(session, pack_url)
+    root = f"https://{urlparse(res.url).hostname}"
+    blob = search(r"const packData\s*=\s*JSON\.parse\(`(.*?)`\);", res.text, DOTALL)
+    if not blob:
+        return "HubCloud Pack", []
+    try:
+        data = loads(blob.group(1))
+    except ValueError as e:
+        raise DirectDownloadLinkException(
+            f"ERROR: Could not parse HubCloud pack data ({e})"
+        ) from e
+    pack = data.get("pack") or {}
+    title = pack.get("pack_name") or pack.get("slug") or "HubCloud Pack"
+    members = []
+    for entry in data.get("files") or []:
+        share_id = entry.get("share_id")
+        if not share_id:
+            continue
+        try:
+            size = int(entry.get("file_size") or 0)
+        except (TypeError, ValueError):
+            size = 0
+        members.append(
+            {
+                "name": entry.get("file_name") or None,
+                "size": size,
+                # Pack members are ordinary /drive/ pages; /video/ returns an empty body.
+                "url": f"{root}/drive/{share_id}",
+            }
+        )
+    return title, members
 
 
 def gdflix(url: str):
-    with _cf_session() as session:
-        if "/pack/" not in url:
-            return _gdflix_file_resolver(session, url)
+    if "/pack/" in url:
+        with _cf_session() as session:
+            title, members = _gdf_pack_members(session, url)
+        if not members:
+            raise DirectDownloadLinkException("ERROR: No files found in this pack")
+        LOGGER.info(f"GDFlix pack '{title}': {len(members)} file(s)")
+        return _resolve_pack(gdflix_file, title, members)
 
-        title, _total_size, files = _gdf_get_pack_info(session, url)
-        if not files:
-            raise DirectDownloadLinkException("ERROR: No files found in pack.")
-
-        details = {"contents": [], "title": title, "total_size": 0}
-
-        def process_gdf_file(file_info):
-            try:
-                with _cf_session() as thread_session:
-                    return (
-                        file_info,
-                        _gdflix_file_resolver(thread_session, file_info["url"]),
-                        None,
-                    )
-            except Exception as e:
-                return file_info, None, e
-
-        results = [None] * len(files)
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(process_gdf_file, f): i for i, f in enumerate(files)}
-            for future in as_completed(futures):
-                results[futures[future]] = future.result()
-
-        for res in results:
-            if not res:
-                continue
-            file_info, resolved_link, err = res
-            if err:
-                LOGGER.error(f"Failed to resolve file {file_info['name']}: {err}")
-                continue
-            if not resolved_link:
-                continue
-
-            header = None
-            if isinstance(resolved_link, tuple):
-                resolved_url = resolved_link[0]
-                if len(resolved_link) == 2:
-                    header = resolved_link[1]
-            elif isinstance(resolved_link, dict):
-                # A GoFile fallback returned a multi-file payload; splice it in.
-                details["contents"].extend(resolved_link.get("contents", []))
-                details["total_size"] += resolved_link.get("total_size", 0)
-                if resolved_link.get("header") and "header" not in details:
-                    details["header"] = resolved_link["header"]
-                continue
-            else:
-                resolved_url = resolved_link
-
-            details["contents"].append(
-                {
-                    "url": resolved_url,
-                    "filename": file_info["name"],
-                    "path": "",
-                }
-            )
-            details["total_size"] += _hub_size_to_bytes(file_info.get("size"))
-            if header and "header" not in details:
-                details["header"] = header
-
-        if not details["contents"]:
-            raise DirectDownloadLinkException(
-                "ERROR: All files in pack failed to resolve."
-            )
-        return details
+    resolved = gdflix_file(url)
+    details = {
+        "contents": [
+            {"url": resolved["url"], "filename": resolved["filename"], "path": ""}
+        ],
+        "title": resolved["filename"],
+        "total_size": resolved["size"],
+    }
+    if resolved.get("header"):
+        details["header"] = resolved["header"]
+    return details
 
 
 def hubcloud(url: str):
-    with _cf_session() as session:
-        if "/pack/" in url or "/packs/" in url:
-            title, _total_size, files = _hub_get_pack_info(session, url)
-            if not files:
-                raise DirectDownloadLinkException("ERROR: No files found in pack.")
+    if "/pack" in url:
+        with _cf_session() as session:
+            title, members = _hub_pack_members(session, url)
+        if not members:
+            raise DirectDownloadLinkException("ERROR: No files found in this pack")
+        LOGGER.info(f"HubCloud pack '{title}': {len(members)} file(s)")
+        return _resolve_pack(hubcloud_file, title, members)
 
-            details = {"contents": [], "title": title, "total_size": 0}
+    if is_hblinks(url):
+        with _cf_session() as session:
+            title, members = _hblinks_members(session, url)
+        if not members:
+            raise DirectDownloadLinkException(
+                "ERROR: No HubCloud/HubDrive links found in this post"
+            )
+        LOGGER.info(f"HBLinks post '{title}': {len(members)} link(s)")
+        return _resolve_pack(hubcloud_file, title, members)
 
-            def process_hub_file(file_info):
-                try:
-                    with _cf_session() as thread_session:
-                        resolved_url, fname, fsize = _hubcloud_file_resolver(
-                            thread_session, file_info["url"]
-                        )
-                        return file_info, resolved_url, fname, fsize, None
-                except Exception as e:
-                    return file_info, None, None, 0, e
+    resolved = hubcloud_file(url)
+    return {
+        "contents": [
+            {"url": resolved["url"], "filename": resolved["filename"], "path": ""}
+        ],
+        "title": resolved["filename"],
+        "total_size": resolved["size"],
+    }
 
-            results = [None] * len(files)
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {
-                    executor.submit(process_hub_file, f): i for i, f in enumerate(files)
-                }
-                for future in as_completed(futures):
-                    results[futures[future]] = future.result()
 
-            for res in results:
-                if not res:
-                    continue
-                file_info, resolved_url, fname, fsize, err = res
-                if err:
-                    LOGGER.error(f"Failed to resolve file {file_info['name']}: {err}")
-                    continue
-                if not resolved_url:
-                    continue
-                details["contents"].append(
-                    {
-                        "url": resolved_url,
-                        "filename": fname or file_info["name"],
-                        "path": "",
-                    }
-                )
-                details["total_size"] += fsize
+def _hblinks_members(session, url):
+    """An hblinks post lists one HubCloud link per quality; treat each as a member."""
+    res = _hub_fetch(session, url)
+    page = _soup(res.text)
+    title = page.title.text.strip() if page.title else "HBLinks"
+    for suffix in ("– HUBLinks", "- HUBLinks", "| HUBLinks"):
+        title = title.replace(suffix, "").strip()
 
-            if not details["contents"]:
-                raise DirectDownloadLinkException(
-                    "ERROR: All files in pack failed to resolve."
-                )
-            return details
+    members = []
+    seen = set()
+    for tag in page.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]):
+        links = [
+            a["href"].strip()
+            for a in tag.find_all("a", href=True)
+            if is_hubcloud(a["href"]) or is_hubdrive(a["href"]) or is_hubcdn(a["href"])
+        ]
+        if not links:
+            continue
+        chosen = next((l for l in links if is_hubcloud(l)), links[0])
+        if chosen in seen:
+            continue
+        seen.add(chosen)
+        quality = tag.get_text(" ", strip=True)
+        for separator in ("–", "-", "|"):
+            if separator in quality:
+                quality = quality.split(separator)[0].strip()
+        members.append({"name": quality or None, "size": 0, "url": chosen})
+    return title, members
 
-        if is_hblinks(url):
-            title, groups = _hub_parse_hblinks(session, url)
-            if not groups:
-                raise DirectDownloadLinkException(
-                    "ERROR: No valid links found in post."
-                )
 
-            details = {"contents": [], "title": title, "total_size": 0}
-            for grp in groups:
-                try:
-                    info = _hub_parse_drive(session, grp["url"])
-                    servers = (
-                        _hub_resolve_servers(session, info["token_url"])
-                        if info.get("token_url")
-                        else {}
-                    )
 
-                    # HubDrive / HubCDN siblings in the same post act as extra mirrors.
-                    if (hd := [l for l in grp["all_urls"] if is_hubdrive(l)]) and (
-                        "FSL" not in servers
-                    ):
-                        servers["FSL"] = hd[0]
-                    if (hcdn := [l for l in grp["all_urls"] if is_hubcdn(l)]) and (
-                        "10Gbps" not in servers
-                    ):
-                        servers["10Gbps"] = hcdn[0]
 
-                    if not (resolved_url := _hub_pick_server(servers)):
-                        continue
-
-                    name = info.get("filename")
-                    if not name or name == "Unknown":
-                        name = grp["quality"]
-
-                    details["contents"].append(
-                        {"url": resolved_url, "filename": name, "path": ""}
-                    )
-                    details["total_size"] += _hub_size_to_bytes(info.get("size"))
-                except Exception as e:
-                    LOGGER.error(f"Failed resolving group in HBLinks post: {e}")
-                    continue
-
-            if not details["contents"]:
-                raise DirectDownloadLinkException(
-                    "ERROR: All files in HBLinks post failed to resolve."
-                )
-            return details
-
-        resolved_url, fname, fsize = _hubcloud_file_resolver(session, url)
-        return {
-            "contents": [{"url": resolved_url, "filename": fname, "path": ""}],
-            "title": fname,
-            "total_size": fsize,
-        }

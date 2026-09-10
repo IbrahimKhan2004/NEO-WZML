@@ -1,6 +1,7 @@
 # This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
 
 from re import compile as re_compile
+from html import escape as html_escape
 from secrets import token_hex
 
 from bot import (
@@ -26,7 +27,7 @@ from bot.helper.ext_utils.task_manager import (
 from bot.helper.listeners.direct_listener import DirectListener
 from bot.helper.mirror_leech_utils.status_utils.direct_status import DirectStatus
 from bot.helper.mirror_leech_utils.status_utils.queue_status import QueueStatus
-from bot.helper.telegram_helper.message_utils import send_status_message
+from bot.helper.telegram_helper.message_utils import send_message, send_status_message
 
 
 async def add_direct_download(listener, path):
@@ -56,6 +57,14 @@ async def add_direct_download(listener, path):
     if limit_exceeded := await limit_checker(listener):
         await listener.on_download_error(limit_exceeded, is_limit=True)
         return
+
+    # A pack whose members partly failed to resolve reports the shortfall here,
+    # so a short download is never mistaken for a complete one.
+    if warning := details.get("warning"):
+        await send_message(
+            listener.message,
+            f"⚠️ <b>Incomplete pack</b>\n{html_escape(warning)}",
+        )
 
     gid = token_hex(5)
     add_to_queue, event = await check_running_tasks(listener)
