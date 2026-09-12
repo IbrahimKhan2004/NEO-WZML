@@ -770,6 +770,7 @@ def get_bot_commands():
     commands["Clone"] = "[link] Clone files/folders to GDrive"
     commands["GDClean"] = "[OWNER] [link] Clean/Trash all files in a GDrive folder"
     commands["UserSet"] = "User personal settings"
+    commands["Thumb"] = "[reply to photo] Save Custom Thumbnail"
     commands["ForceStart"] = "[gid/reply] Force start from queued task"
     commands["Count"] = "[link] Count no. of files/folders in GDrive"
     commands["List"] = "[query] Search any Text which is available in GDrive"
@@ -929,6 +930,11 @@ def get_help_string(user_id=None, is_sudo=False):
             "desc": "Configure your personal settings: thumbnails, captions, upload destinations, and more",
             "usage": "/usettings",
             "examples": ["/usettings"],
+        },
+        "Thumb": {
+            "desc": "Save a custom thumbnail by replying to a photo",
+            "usage": "/thumb (reply to a photo)",
+            "examples": ["/thumb"],
         },
         "Rss": {
             "desc": "Manage RSS feeds for automatic downloads when new content is published",
