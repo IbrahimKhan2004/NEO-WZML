@@ -738,6 +738,18 @@ def get_bot_commands():
 
     commands = {}
 
+    commands["Leech"] = "[link/file] Leech files to Upload to Telegram"
+    if Config.SHOW_EXTRA_CMDS:
+        commands["ZipLeech"] = "[link/file] Leech and compress to zip"
+        commands["UnzipLeech"] = "[link/file] Leech and extract archive"
+
+    commands["QbLeech"] = "[magnet/torrent] Leech files to Upload to Telegram using qbit"
+    if Config.SHOW_EXTRA_CMDS:
+        commands["QbZipLeech"] = "[magnet/torrent] QBit Leech and compress to zip"
+        commands["QbUnzipLeech"] = "[magnet/torrent] QBit Leech and extract archive"
+
+    commands["YtdlLeech"] = "[link] Leech YouTube, m3u8, Social Media and yt-dlp supported urls"
+
     commands["Mirror"] = "[link/file] Mirror to Upload Destination"
     if Config.SHOW_EXTRA_CMDS:
         commands["ZipMirror"] = "[link/file] Mirror and compress to zip"
@@ -754,18 +766,6 @@ def get_bot_commands():
     if Config.SHOW_EXTRA_CMDS:
         commands["ZipUpHoster"] = "[link/file] Compress to zip and upload to DDL Servers"
         commands["UnzipUpHoster"] = "[link/file] Extract and upload to DDL Servers"
-
-    commands["Leech"] = "[link/file] Leech files to Upload to Telegram"
-    if Config.SHOW_EXTRA_CMDS:
-        commands["ZipLeech"] = "[link/file] Leech and compress to zip"
-        commands["UnzipLeech"] = "[link/file] Leech and extract archive"
-
-    commands["QbLeech"] = "[magnet/torrent] Leech files to Upload to Telegram using qbit"
-    if Config.SHOW_EXTRA_CMDS:
-        commands["QbZipLeech"] = "[magnet/torrent] QBit Leech and compress to zip"
-        commands["QbUnzipLeech"] = "[magnet/torrent] QBit Leech and extract archive"
-
-    commands["YtdlLeech"] = "[link] Leech YouTube, m3u8, Social Media and yt-dlp supported urls"
 
     commands["Clone"] = "[link] Clone files/folders to GDrive"
     commands["GDClean"] = "[OWNER] [link] Clean/Trash all files in a GDrive folder"
