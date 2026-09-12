@@ -1238,9 +1238,10 @@ async def set_thumb(_, message):
     if not reply_to or not reply_to.photo:
         await send_message(message, "Reply to any photo to save as your Thumbnail.")
         return
+    status_msg = await send_message(message, "⏳ Saving thumbnail...")
     await create_thumb(reply_to, user_id)
     await database.update_user_data(user_id)
-    await send_message(message, "Thumbnail Saved ✅")
+    await edit_message(status_msg, "Thumbnail Saved ✅")
 
 
 @new_task
