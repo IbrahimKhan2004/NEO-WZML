@@ -1232,6 +1232,18 @@ async def send_user_settings(_, message):
 
 
 @new_task
+async def set_thumb(_, message):
+    user_id = message.from_user.id
+    reply_to = message.reply_to_message
+    if not reply_to or not reply_to.photo:
+        await send_message(message, "Reply to any photo to save as your Thumbnail.")
+        return
+    await create_thumb(reply_to, user_id)
+    await database.update_user_data(user_id)
+    await send_message(message, "Thumbnail Saved ✅")
+
+
+@new_task
 async def add_file(_, message, ftype, rfunc):
     user_id = message.from_user.id
     handler_dict[user_id] = False
