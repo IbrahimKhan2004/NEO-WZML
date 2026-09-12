@@ -211,10 +211,12 @@ def get_progress_bar_string(pct):
     except (TypeError, ValueError):
         pct = 0
     p = min(max(pct, 0), 100)
-    cFull = int(p // 8)
-    p_str = "⬢" * cFull
-    p_str += "⬡" * (12 - cFull)
-    return f"[{p_str}]"
+    total = 12
+    exact = p / 100 * total
+    full = int(exact)
+    partial = 1 if exact - full >= 0.5 else 0
+    empty = total - full - partial
+    return f"[{'🖤' * full}{'🩶' * partial}{'🤍' * empty}]"
 
 
 async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):
