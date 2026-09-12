@@ -211,10 +211,10 @@ def get_progress_bar_string(pct):
     except (TypeError, ValueError):
         pct = 0
     p = min(max(pct, 0), 100)
-    total = 12
+    total = 10
     exact = p / 100 * total
     full = int(exact)
-    partial = 1 if exact - full >= 0.5 else 0
+    partial = 1 if exact - full > 0 else 0
     empty = total - full - partial
     return f"[{'🖤' * full}{'🩶' * partial}{'🤍' * empty}]"
 
