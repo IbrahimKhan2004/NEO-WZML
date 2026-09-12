@@ -337,6 +337,13 @@ def add_handlers():
     )
     TgClient.bot.add_handler(
         MessageHandler(
+            set_thumb,
+            filters=command(BotCommands.ThumbCommand, case_sensitive=True)
+            & (private | CustomFilters.authorized),
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
             ytdl,
             filters=command(BotCommands.YtdlCommand, case_sensitive=True)
             & CustomFilters.authorized,
