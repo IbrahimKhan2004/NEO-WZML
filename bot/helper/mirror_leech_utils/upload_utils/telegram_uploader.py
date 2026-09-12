@@ -748,6 +748,7 @@ class TelegramUploader:
                     width=width,
                     height=height,
                     thumb=thumb,
+                    cover=thumb,
                     supports_streaming=True,
                     disable_notification=True,
                     progress=self._upload_progress,
