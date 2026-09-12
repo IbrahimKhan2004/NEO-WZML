@@ -371,34 +371,10 @@ def add_handlers():
         bot_commands = get_bot_commands()
 
         if Config.JD_EMAIL and Config.JD_PASS:
-            jd_mirror_pos = 3
+            jd_leech_pos = 2
             if Config.SHOW_EXTRA_CMDS:
-                jd_mirror_pos = 6
-            
-            bot_commands = insert_at(
-                bot_commands,
-                "JdMirror",
-                "[link/file] Mirror to Upload Destination using JDownloader",
-                jd_mirror_pos,
-            )
-            if Config.SHOW_EXTRA_CMDS:
-                bot_commands = insert_at(
-                    bot_commands,
-                    "JdZipMirror",
-                    "[link/file] JDownloader Mirror and compress to zip",
-                    jd_mirror_pos + 1,
-                )
-                bot_commands = insert_at(
-                    bot_commands,
-                    "JdUnzipMirror",
-                    "[link/file] JDownloader Mirror and extract archive",
-                    jd_mirror_pos + 2,
-                )
-            
-            jd_leech_pos = 12
-            if Config.SHOW_EXTRA_CMDS:
-                jd_leech_pos = 21
-            
+                jd_leech_pos = 6
+
             bot_commands = insert_at(
                 bot_commands,
                 "JdLeech",
@@ -417,6 +393,30 @@ def add_handlers():
                     "JdUnzipLeech",
                     "[link/file] JDownloader Leech and extract archive",
                     jd_leech_pos + 2,
+                )
+
+            jd_mirror_pos = 5
+            if Config.SHOW_EXTRA_CMDS:
+                jd_mirror_pos = 13
+
+            bot_commands = insert_at(
+                bot_commands,
+                "JdMirror",
+                "[link/file] Mirror to Upload Destination using JDownloader",
+                jd_mirror_pos,
+            )
+            if Config.SHOW_EXTRA_CMDS:
+                bot_commands = insert_at(
+                    bot_commands,
+                    "JdZipMirror",
+                    "[link/file] JDownloader Mirror and compress to zip",
+                    jd_mirror_pos + 1,
+                )
+                bot_commands = insert_at(
+                    bot_commands,
+                    "JdUnzipMirror",
+                    "[link/file] JDownloader Mirror and extract archive",
+                    jd_mirror_pos + 2,
                 )
 
         if Config.LOGIN_PASS:
