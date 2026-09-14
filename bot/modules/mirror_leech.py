@@ -160,9 +160,15 @@ class Mirror(TaskListener):
             "-tl": "",
             "-ff": set(),
             "-mv": False,
+            "-vt": False,
         }
 
         arg_parser(input_list[1:], args)
+
+        if args["-vt"]:
+            from bot.modules.video_tool import get_video_tool_settings
+
+            await get_video_tool_settings(self)
 
         if Config.DISABLE_BULK and args.get("-b", False):
             await database.remove_shared_task(self.message.id, TgClient.ID, user_id=self.user_id)
@@ -217,7 +223,7 @@ class Mirror(TaskListener):
         self.convert_audio = args["-ca"]
         self.convert_video = args["-cv"]
 
-        self.merge_video = args["-mv"]
+        self.merge_video = args["-mv"] or self.merge_video
 
         self.hybrid_leech = args["-hl"]
         self.thumbnail_layout = args["-tl"]
