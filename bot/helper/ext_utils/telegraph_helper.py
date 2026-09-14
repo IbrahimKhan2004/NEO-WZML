@@ -3,7 +3,7 @@
 from asyncio import sleep
 from secrets import token_hex
 from telegraph.aio import Telegraph
-from telegraph.exceptions import RetryAfterError
+from telegraph.exceptions import RetryAfterError, TelegraphException
 
 from bot import LOGGER
 from bot.core.config_manager import Config
@@ -24,6 +24,12 @@ class TelegraphHelper:
                 author_url=self._author_url,
             )
         except Exception as e:
+            if isinstance(e, TelegraphException) and "AUTHOR_URL_INVALID" in str(e) and self._author_url:
+                LOGGER.warning(
+                    f"Telegraph rejected AUTHOR_URL ({self._author_url!r}), retrying without it"
+                )
+                self._author_url = None
+                return await self.create_account()
             LOGGER.error(
                 f"Failed to create Telegraph Account: {type(e).__name__}: {e}"
             )
