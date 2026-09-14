@@ -166,6 +166,7 @@ class TaskConfig:
         self.seed = False
         self.join = False
         self.merge_video = False
+        self.merge_after_extract = False
         self.merge_name = ""
         self.private_link = False
         self.stop_duplicate = False
