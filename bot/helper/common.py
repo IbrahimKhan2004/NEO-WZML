@@ -57,6 +57,7 @@ from bot.helper.ext_utils.media_utils import (
     create_thumb,
     download_image_thumb,
     get_document_type,
+    get_streams,
     take_ss,
 )
 from bot.helper.ext_utils.metadata_utils import MetadataProcessor
@@ -168,6 +169,7 @@ class TaskConfig:
         self.merge_video = False
         self.merge_after_extract = False
         self.merge_name = ""
+        self.remove_stream = False
         self.private_link = False
         self.stop_duplicate = False
         self.sample_video = False
@@ -1229,6 +1231,63 @@ class TaskConfig:
             self.is_cancelled = True
             await self.on_upload_error(merger.error)
             return False
+        return dl_path
+
+    async def proceed_remove_stream(self, dl_path, gid):
+        from natsort import natsorted
+
+        from bot.helper.ext_utils.merge_utils import VIDEO_EXTS
+        from bot.modules.remove_stream import get_remove_stream_selection
+
+        if await aiopath.isfile(dl_path):
+            files = [dl_path] if dl_path.lower().endswith(VIDEO_EXTS) else []
+        else:
+            files = [
+                ospath.join(dirpath, file_)
+                for dirpath, _, filenames in await sync_to_async(walk, dl_path)
+                for file_ in filenames
+                if file_.lower().endswith(VIDEO_EXTS)
+            ]
+        files = natsorted(files)
+        if not files:
+            return dl_path
+
+        selected_groups = await get_remove_stream_selection(self, files[0])
+        if not selected_groups:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Remove Stream")
+        self.progress = False
+        async with cpu_eater_lock:
+            self.progress = True
+            for f_path in files:
+                if self.is_cancelled:
+                    return False
+                streams = await get_streams(f_path)
+                if not streams:
+                    continue
+                map_args = []
+                for ctype, lang, _ in selected_groups:
+                    for s in streams:
+                        if s.get("codec_type", "").lower() != ctype:
+                            continue
+                        if ctype != "video" and s.get("tags", {}).get(
+                            "language", "und"
+                        ) != lang:
+                            continue
+                        map_args += ["-map", f"-0:{s.get('index')}"]
+                map_args += ["-map", "-0:t"]
+                self.proceed_count += 1
+                self.subname = ospath.basename(f_path)
+                self.subsize = await get_path_size(f_path)
+                output = await ffmpeg.remove_streams(f_path, map_args)
+                if self.is_cancelled:
+                    return False
+                if output:
+                    await remove(f_path)
+                    await move(output, f_path)
         return dl_path
 
     async def _is_image_file(self, f_path):
