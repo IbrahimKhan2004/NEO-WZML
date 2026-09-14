@@ -24,6 +24,12 @@ class TelegraphHelper:
                 author_url=self._author_url,
             )
         except Exception as e:
+            if "AUTHOR_URL_INVALID" in str(e) and self._author_url:
+                LOGGER.warning(
+                    f"Telegraph rejected AUTHOR_URL, retrying without it: {e}"
+                )
+                self._author_url = None
+                return await self.create_account()
             LOGGER.error(f"Failed to create Telegraph Account: {e}")
 
     async def create_page(self, title, content):
