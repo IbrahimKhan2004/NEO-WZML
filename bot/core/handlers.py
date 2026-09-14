@@ -201,6 +201,7 @@ def add_handlers():
         )
     )
 
+    TgClient.bot.add_handler(CallbackQueryHandler(edit_video_tool, filters=regex("^vt")))
     TgClient.bot.add_handler(
         MessageHandler(
             uphoster,
