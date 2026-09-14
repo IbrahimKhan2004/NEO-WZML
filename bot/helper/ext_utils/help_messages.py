@@ -351,6 +351,19 @@ merge_video = """<b>✦ MERGE VIDEOS</b>: <code>-mv</code>
 
 <b>Note:</b> Runs after join but before extract. Original video files are removed after successful merge."""
 
+video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
+
+<b>Purpose:</b> Opens an interactive menu to configure video processing options (e.g. Video Merge) before the task starts.
+
+<b>Usage:</b>
+<code>/cmd link -vt</code>
+
+<b>Examples:</b>
+<code>/leech link -vt</code>
+<code>/mirror link -vt</code>
+
+<b>Note:</b> If Video Merge is enabled from this menu, merging runs after extract (so archived/zipped episodes are unpacked first, then merged)."""
+
 tg_links = """<b>✦ TELEGRAM LINKS</b>
 
 <b>Supported Formats:</b>
@@ -675,6 +688,7 @@ MIRROR_HELP_DICT = {
     "Bulk": bulk,
     "Join": join,
     "Merge-Video": merge_video,
+    "Video-Tools": video_tool,
     "Rclone-DL": rlone_dl,
     "Terabox-DL": terabox_dl,
     "Tg-Links": tg_links,
