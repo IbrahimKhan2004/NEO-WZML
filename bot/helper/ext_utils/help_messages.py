@@ -353,7 +353,7 @@ merge_video = """<b>✦ MERGE VIDEOS</b>: <code>-mv</code>
 
 video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 
-<b>Purpose:</b> Opens an interactive menu to configure video processing options (e.g. Video Merge) before the task starts.
+<b>Purpose:</b> Opens an interactive menu to configure video processing options (e.g. Video Merge, Remove Stream) before the task starts.
 
 <b>Usage:</b>
 <code>/cmd link -vt</code>
@@ -362,7 +362,20 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> If Video Merge is enabled from this menu, merging runs after extract (so archived/zipped episodes are unpacked first, then merged)."""
+<b>Note:</b> If Video Merge is enabled from this menu, merging runs after extract (so archived/zipped episodes are unpacked first, then merged). If Remove Stream is also enabled, it runs after Video Merge (on the merged file) and before FFmpeg commands."""
+
+remove_stream = """<b>✦ REMOVE STREAM</b> (via <code>-vt</code> menu)
+
+<b>Purpose:</b> Remove specific audio/subtitle/video streams from the downloaded file(s) using ffmpeg (stream copy, no re-encode). Attachments (e.g. fonts) are always removed.
+
+<b>Usage:</b>
+<code>/cmd link -vt</code> then tap <b>Remove Stream</b>
+
+<b>Examples:</b>
+<code>/leech link -vt</code>
+<code>/unzip link -vt</code>
+
+<b>Note:</b> Streams are only selectable after the download completes. The selection is probed once (from the first file) and matched by stream type/language across every file in a batch, so it also works with unzip/zip/leech/qBittorrent tasks. Runs after Video Merge (if enabled) and before FFmpeg commands."""
 
 tg_links = """<b>✦ TELEGRAM LINKS</b>
 
@@ -689,6 +702,7 @@ MIRROR_HELP_DICT = {
     "Join": join,
     "Merge-Video": merge_video,
     "Video-Tools": video_tool,
+    "Remove-Stream": remove_stream,
     "Rclone-DL": rlone_dl,
     "Terabox-DL": terabox_dl,
     "Tg-Links": tg_links,
