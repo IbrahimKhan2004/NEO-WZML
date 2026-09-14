@@ -353,7 +353,12 @@ merge_video = """<b>✦ MERGE VIDEOS</b>: <code>-mv</code>
 
 video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 
-<b>Purpose:</b> Opens an interactive menu to configure video processing options (e.g. Video Merge, Remove Stream) before the task starts.
+<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Extract Streams, Remove Stream) before the task starts.
+
+<b>Options Available in Menu:</b>
+• <b>Video Merge:</b> Concatenate videos in folder order into one file.
+• <b>Extract Streams:</b> Selectively extract specific audio, subtitle, or video streams to standalone files (.m4a, .ass, .mkv). Optionally delete main video files after extraction.
+• <b>Remove Stream:</b> Selectively strip unwanted audio/subtitle/video streams from the video.
 
 <b>Usage:</b>
 <code>/cmd link -vt</code>
@@ -362,7 +367,7 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> If Video Merge is enabled from this menu, merging runs after extract (so archived/zipped episodes are unpacked first, then merged). If Remove Stream is also enabled, it runs after Video Merge (on the merged file) and before FFmpeg commands."""
+<b>Note:</b> Video Merge runs after extract. Remove Stream runs after Video Merge. Extract Streams runs after Remove Stream and before FFmpeg commands."""
 
 remove_stream = """<b>✦ REMOVE STREAM</b> (via <code>-vt</code> menu)
 
@@ -702,7 +707,6 @@ MIRROR_HELP_DICT = {
     "Join": join,
     "Merge-Video": merge_video,
     "Video-Tools": video_tool,
-    "Remove-Stream": remove_stream,
     "Rclone-DL": rlone_dl,
     "Terabox-DL": terabox_dl,
     "Tg-Links": tg_links,

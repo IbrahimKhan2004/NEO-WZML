@@ -42,6 +42,7 @@ class MirrorStatus:
     STATUS_METADATA = "Metadata"
     STATUS_MERGING = "Merging"
     STATUS_REMOVE_STREAM = "Remove Stream"
+    STATUS_EXTRACT_STREAM = "Extract Stream"
 
 
 class EngineStatus:
@@ -83,6 +84,7 @@ STATUSES = {
     "CK": MirrorStatus.STATUS_CHECK,
     "MG": MirrorStatus.STATUS_MERGING,
     "RS": MirrorStatus.STATUS_REMOVE_STREAM,
+    "ES": MirrorStatus.STATUS_EXTRACT_STREAM,
 }
 
 
