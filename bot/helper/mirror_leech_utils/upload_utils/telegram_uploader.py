@@ -620,7 +620,7 @@ class TelegramUploader:
         except ImportError:
             _SlowmodeWait = FloodWait
 
-        wait_exc_types = (FloodWait, FloodPremiumWait, _SlowmodeWait)
+        wait_exc_types = (FloodWait, FloodPremiumWait, _SlowmodeWait, TimeoutError)
 
         for attempt in range(3):
             self._last_uploaded = 0
