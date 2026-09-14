@@ -96,7 +96,7 @@ class MergeVideos:
                 BinConfig.FFMPEG_NAME, "-hide_banner", "-loglevel", "error",
                 "-f", "concat", "-safe", "0",
                 "-i", concat_path,
-                "-map", "0",
+                "-map", "0", "-map", "-0:t",
                 "-c", "copy",
                 output_path,
             ]
