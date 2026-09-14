@@ -36,6 +36,7 @@ from .shell import run_shell
 from .stats import bot_stats, stats_pages, get_packages_version
 from .status import task_status, status_pages
 from .users_settings import get_users_settings, edit_user_settings, send_user_settings, set_thumb
+from .video_tool import edit_video_tool, get_video_tool_settings
 from .ytdlp import ytdl, ytdl_leech
 from .speedtest import speedtest
 from . import dump_select
@@ -101,6 +102,8 @@ __all__ = [
     "edit_user_settings",
     "send_user_settings",
     "set_thumb",
+    "edit_video_tool",
+    "get_video_tool_settings",
     "ytdl",
     "ytdl_leech",
     "speedtest",
