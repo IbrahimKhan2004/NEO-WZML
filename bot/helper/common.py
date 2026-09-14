@@ -169,6 +169,7 @@ class TaskConfig:
         self.merge_video = False
         self.merge_after_extract = False
         self.merge_name = ""
+        self.extract_stream = False
         self.remove_stream = False
         self.private_link = False
         self.stop_duplicate = False
@@ -1232,6 +1233,76 @@ class TaskConfig:
             await self.on_upload_error(merger.error)
             return False
         return dl_path
+
+    async def proceed_extract_stream(self, dl_path, gid):
+        from natsort import natsorted
+
+        from bot.helper.ext_utils.merge_utils import VIDEO_EXTS
+        from bot.modules.extract_stream import get_extract_stream_selection
+
+        if await aiopath.isfile(dl_path):
+            files = [dl_path] if dl_path.lower().endswith(VIDEO_EXTS) else []
+        else:
+            files = [
+                ospath.join(dirpath, file_)
+                for dirpath, _, filenames in await sync_to_async(walk, dl_path)
+                for file_ in filenames
+                if file_.lower().endswith(VIDEO_EXTS)
+            ]
+        files = natsorted(files)
+        if not files:
+            return dl_path
+
+        selected_groups, delete_video = await get_extract_stream_selection(self, files[0])
+        if not selected_groups:
+            return dl_path
+
+        base_dir = dl_path if await aiopath.isdir(dl_path) else ospath.dirname(dl_path)
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Extract Stream")
+        self.progress = False
+        async with cpu_eater_lock:
+            self.progress = True
+            for f_path in files:
+                if self.is_cancelled:
+                    return False
+                streams = await get_streams(f_path)
+                if not streams:
+                    continue
+                file_base = ospath.splitext(f_path)[0]
+                extracted_any = False
+
+                for ctype, lang, _ in selected_groups:
+                    indices = []
+                    for s in streams:
+                        if s.get("codec_type", "").lower() != ctype:
+                            continue
+                        if ctype != "video" and s.get("tags", {}).get("language", "und") != lang:
+                            continue
+                        indices.append(s.get("index"))
+                    if not indices:
+                        continue
+
+                    ext = ".mkv" if ctype == "video" else ".m4a" if ctype == "audio" else ".ass"
+                    lang_str = f".{lang}" if lang and ctype != "video" else ""
+                    output_file = f"{file_base}.{ctype}{lang_str}{ext}"
+
+                    self.proceed_count += 1
+                    self.subname = ospath.basename(f_path)
+                    self.subsize = await get_path_size(f_path)
+
+                    res = await ffmpeg.extract_streams(f_path, indices, output_file)
+                    if self.is_cancelled:
+                        return False
+                    if res:
+                        extracted_any = True
+
+                if extracted_any and delete_video:
+                    await remove(f_path)
+
+        return base_dir if await aiopath.isdir(base_dir) else dl_path
 
     async def proceed_remove_stream(self, dl_path, gid):
         from natsort import natsorted

@@ -29,6 +29,7 @@ from .restart import (
     confirm_restart,
     restart_sessions,
 )
+from .extract_stream import edit_extract_stream_selection
 from .remove_stream import edit_remove_stream_selection
 from .rss import get_rss_menu, rss_listener
 from .search import torrent_search, torrent_search_update, initiate_search_tools
@@ -105,6 +106,7 @@ __all__ = [
     "set_thumb",
     "edit_video_tool",
     "get_video_tool_settings",
+    "edit_extract_stream_selection",
     "edit_remove_stream_selection",
     "ytdl",
     "ytdl_leech",
