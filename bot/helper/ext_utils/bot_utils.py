@@ -320,9 +320,7 @@ def arg_parser(items, arg_base):
                         if not sub_list:
                             break
                         check = " ".join(sub_list).strip()
-                        if check.startswith("[") and check.endswith("]"):
-                            break
-                        elif not check.startswith("["):
+                        if not (part == "-ff" and check.startswith("[") and not check.endswith("]")):
                             break
                     sub_list.append(items[j])
                 if sub_list:
@@ -579,3 +577,4 @@ def apply_caption_style(caption, style):
 
 def get_mega_link_type(url):
     return "folder" if "folder" in url or "/#F!" in url else "file"
+            
