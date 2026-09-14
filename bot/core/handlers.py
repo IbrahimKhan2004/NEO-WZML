@@ -203,6 +203,9 @@ def add_handlers():
 
     TgClient.bot.add_handler(CallbackQueryHandler(edit_video_tool, filters=regex("^vt")))
     TgClient.bot.add_handler(
+        CallbackQueryHandler(edit_remove_stream_selection, filters=regex("^rss"))
+    )
+    TgClient.bot.add_handler(
         MessageHandler(
             uphoster,
             filters=command(BotCommands.UpHosterCommand, case_sensitive=True)
