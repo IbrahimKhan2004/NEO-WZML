@@ -26,6 +26,8 @@ def _vt_menu(vstate):
     buttons = ButtonMaker()
     tick = "✅ " if vstate["merge_video"] else ""
     buttons.data_button(f"{tick}Video Merge", "vt mv")
+    rs_tick = "✅ " if vstate["remove_stream"] else ""
+    buttons.data_button(f"{rs_tick}Remove Stream", "vt rs")
     buttons.data_button("Done", "vt done")
     buttons.data_button("Close", "vt close")
     return buttons.build_menu(1)
@@ -120,6 +122,17 @@ async def edit_video_tool(client, query):
         vstate["merge_name"] = ""
         await query.answer("Video Merge disabled!")
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "rs" and not vstate["remove_stream"]:
+        vstate["remove_stream"] = True
+        await query.answer(
+            "⏳ You will be able to select streams after the download is complete",
+            show_alert=True,
+        )
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "rs" and vstate["remove_stream"]:
+        vstate["remove_stream"] = False
+        await query.answer("Remove Stream disabled!")
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
     elif action == "back":
         await query.answer()
         vstate["stage"] = "menu"
@@ -132,6 +145,7 @@ async def edit_video_tool(client, query):
         await query.answer()
         vstate["merge_video"] = False
         vstate["merge_name"] = ""
+        vstate["remove_stream"] = False
         if vstate.get("handler"):
             client.remove_handler(*vstate["handler"])
             vstate["handler"] = None
@@ -152,6 +166,7 @@ async def get_video_tool_settings(listener):
     vstate = {
         "merge_video": False,
         "merge_name": "",
+        "remove_stream": False,
         "stage": "menu",
         "done": False,
         "user_id": listener.user_id,
@@ -171,6 +186,7 @@ async def get_video_tool_settings(listener):
         if elapsed > VT_TIMEOUT:
             vstate["merge_video"] = False
             vstate["merge_name"] = ""
+            vstate["remove_stream"] = False
             if vstate.get("handler"):
                 TgClient.bot.remove_handler(*vstate["handler"])
             handler_dict[mid] = False
@@ -184,5 +200,6 @@ async def get_video_tool_settings(listener):
         await delete_message(msg)
     listener.merge_video = vstate["merge_video"]
     listener.merge_name = vstate["merge_name"]
+    listener.remove_stream = vstate["remove_stream"]
     vt_dict.pop(mid, None)
     handler_dict.pop(mid, None)
