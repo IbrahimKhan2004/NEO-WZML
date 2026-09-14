@@ -269,6 +269,7 @@ def arg_parser(items, arg_base):
         "-bt",
         "-yt",
         "-mv",
+        "-vt",
     }
     if Config.DISABLE_BULK and "-b" in items:
         arg_base["-b"] = False
@@ -304,6 +305,7 @@ def arg_parser(items, arg_base):
                     "-bt",
                     "-yt",
                     "-mv",
+                    "-vt",
                 ]
             ):
                 arg_base[part] = True
@@ -577,4 +579,3 @@ def apply_caption_style(caption, style):
 
 def get_mega_link_type(url):
     return "folder" if "folder" in url or "/#F!" in url else "file"
-            
