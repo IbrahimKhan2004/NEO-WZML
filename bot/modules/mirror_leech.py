@@ -169,6 +169,8 @@ class Mirror(TaskListener):
             from bot.modules.video_tool import get_video_tool_settings
 
             await get_video_tool_settings(self)
+            if self.merge_video:
+                self.merge_after_extract = True
 
         if Config.DISABLE_BULK and args.get("-b", False):
             await database.remove_shared_task(self.message.id, TgClient.ID, user_id=self.user_id)
