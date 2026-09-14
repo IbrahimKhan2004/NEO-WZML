@@ -1275,29 +1275,59 @@ class TaskConfig:
                 extracted_any = False
 
                 for ctype, lang, _ in selected_groups:
-                    indices = []
-                    for s in streams:
-                        if s.get("codec_type", "").lower() != ctype:
-                            continue
-                        if ctype != "video" and s.get("tags", {}).get("language", "und") != lang:
-                            continue
-                        indices.append(s.get("index"))
-                    if not indices:
+                    target_streams = [
+                        s for s in streams
+                        if s.get("codec_type", "").lower() == ctype
+                        and (ctype == "video" or (s.get("tags") or {}).get("language", "und") == lang)
+                    ]
+                    if not target_streams:
                         continue
 
-                    ext = ".mkv" if ctype == "video" else ".m4a" if ctype == "audio" else ".ass"
-                    lang_str = f".{lang}" if lang and ctype != "video" else ""
-                    output_file = f"{file_base}.{ctype}{lang_str}{ext}"
+                    multi_track = len(target_streams) > 1
+                    for idx_pos, s in enumerate(target_streams, start=1):
+                        s_index = s.get("index")
+                        codec = s.get("codec_name", "").lower()
 
-                    self.proceed_count += 1
-                    self.subname = ospath.basename(f_path)
-                    self.subsize = await get_path_size(f_path)
+                        if ctype == "video":
+                            ext = ".mkv"
+                        elif ctype == "audio":
+                            ext_map = {
+                                "aac": ".m4a",
+                                "mp3": ".mp3",
+                                "flac": ".flac",
+                                "opus": ".opus",
+                                "ac3": ".ac3",
+                                "eac3": ".eac3",
+                                "dts": ".dts",
+                                "vorbis": ".ogg",
+                            }
+                            ext = ext_map.get(codec, ".mka")
+                        else:
+                            ext_map = {
+                                "subrip": ".srt",
+                                "srt": ".srt",
+                                "ass": ".ass",
+                                "ssa": ".ass",
+                                "hdmv_pgs_subtitle": ".sup",
+                                "pgs": ".sup",
+                                "webvtt": ".vtt",
+                                "dvd_subtitle": ".sub",
+                            }
+                            ext = ext_map.get(codec, ".mks")
 
-                    res = await ffmpeg.extract_streams(f_path, indices, output_file)
-                    if self.is_cancelled:
-                        return False
-                    if res:
-                        extracted_any = True
+                        lang_str = f".{lang}" if lang and ctype != "video" else ""
+                        track_str = f".t{idx_pos}" if multi_track else ""
+                        output_file = f"{file_base}.{ctype}{lang_str}{track_str}{ext}"
+
+                        self.proceed_count += 1
+                        self.subname = ospath.basename(f_path)
+                        self.subsize = await get_path_size(f_path)
+
+                        res = await ffmpeg.extract_streams(f_path, [s_index], output_file)
+                        if self.is_cancelled:
+                            return False
+                        if res:
+                            extracted_any = True
 
                 if extracted_any and delete_video:
                     await remove(f_path)
@@ -1344,7 +1374,7 @@ class TaskConfig:
                     for s in streams:
                         if s.get("codec_type", "").lower() != ctype:
                             continue
-                        if ctype != "video" and s.get("tags", {}).get(
+                        if ctype != "video" and (s.get("tags") or {}).get(
                             "language", "und"
                         ) != lang:
                             continue

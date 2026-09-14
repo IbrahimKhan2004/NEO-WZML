@@ -121,7 +121,7 @@ async def get_extract_stream_selection(listener, probe_file):
         ctype = s.get("codec_type", "").lower()
         if ctype not in ("video", "audio", "subtitle"):
             continue
-        lang = None if ctype == "video" else s.get("tags", {}).get("language", "und")
+        lang = None if ctype == "video" else (s.get("tags") or {}).get("language", "und")
         for g in groups:
             if g[0] == ctype and g[1] == lang:
                 g[2].append(s.get("index"))
@@ -131,7 +131,11 @@ async def get_extract_stream_selection(listener, probe_file):
     if not groups:
         return None, False
 
-    tag = listener.message.from_user.mention
+    tag = (
+        listener.message.from_user.mention
+        if getattr(listener.message, "from_user", None)
+        else getattr(listener, "tag", "User")
+    )
     start_time = time()
     estate = {
         "groups": groups,
