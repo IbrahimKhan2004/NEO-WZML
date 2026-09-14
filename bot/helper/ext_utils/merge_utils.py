@@ -62,7 +62,10 @@ class MergeVideos:
         dirpath = dl_path if await aiopath.isdir(dl_path) else ospath.dirname(dl_path)
         base_name = ospath.basename(dl_path)
         name, _ = ospath.splitext(base_name)
-        output_path = await self._get_available_output_path(dirpath, name)
+        if getattr(self._listener, "merge_name", ""):
+            output_path = ospath.join(dirpath, self._listener.merge_name)
+        else:
+            output_path = await self._get_available_output_path(dirpath, name)
         files = [
             ospath.join(root, file_)
             for root, _, filenames in await sync_to_async(walk, dirpath)
