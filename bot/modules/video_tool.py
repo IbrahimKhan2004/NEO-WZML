@@ -30,6 +30,8 @@ def _vt_menu(vstate):
     buttons.data_button(f"{es_tick}Extract Streams", "vt es")
     rs_tick = "✅ " if vstate["remove_stream"] else ""
     buttons.data_button(f"{rs_tick}Remove Stream", "vt rs")
+    ca_tick = "✅ " if vstate["convert_audio"] else ""
+    buttons.data_button(f"{ca_tick}Convert Audio", "vt ca")
     buttons.data_button("Done", "vt done")
     buttons.data_button("Close", "vt close")
     return buttons.build_menu(1)
@@ -40,6 +42,64 @@ def _vt_text(tag, time_left):
         f"<b>Video Tools Settings for</b> {tag}\n\n"
         f"<b>Timeout:</b> {round(time_left)} Seconds"
     )
+
+
+AUDIO_FORMATS = ["AAC", "MP3", "FLAC", "OPUS", "AC3", "WAV"]
+AUDIO_BITRATES = ["40k", "64k", "96k", "128k", "192k", "256k", "320k"]
+
+
+def _ca_menu_text(vstate):
+    fmt = vstate["audio_format"] or "None"
+    bitrate = vstate["audio_bitrate"] or "Original"
+    return (
+        "<b>Configure Audio Conversion!</b>\n\n"
+        f"Format: {fmt}\n"
+        f"Bitrate: {bitrate}"
+    )
+
+
+def _ca_menu_buttons():
+    buttons = ButtonMaker()
+    buttons.data_button("Format", "vt cafmt")
+    buttons.data_button("Bitrate", "vt cabr")
+    buttons.data_button("Back", "vt caback")
+    buttons.data_button("Done", "vt cadone")
+    buttons.data_button("Close", "vt close")
+    return buttons.build_menu(1)
+
+
+def _ca_format_text(vstate):
+    return (
+        "<b>Select the desired audio format!</b>\n"
+        f"Current Selection: {vstate['audio_format'] or 'None'}"
+    )
+
+
+def _ca_format_buttons(vstate):
+    buttons = ButtonMaker()
+    for fmt in AUDIO_FORMATS:
+        tick = "✅ " if vstate["audio_format"] == fmt else ""
+        buttons.data_button(f"{tick}{fmt}", f"vt fmt_{fmt}")
+    buttons.data_button("Back", "vt fmtback")
+    buttons.data_button("Done", "vt fmtdone")
+    return buttons.build_menu(1)
+
+
+def _ca_bitrate_text(vstate):
+    return (
+        "<b>Select the desired audio bitrate!</b>\n"
+        f"Current Selection: {vstate['audio_bitrate'] or 'Original'}"
+    )
+
+
+def _ca_bitrate_buttons(vstate):
+    buttons = ButtonMaker()
+    for br in AUDIO_BITRATES:
+        tick = "✅ " if vstate["audio_bitrate"] == br else ""
+        buttons.data_button(f"{tick}{br}", f"vt br_{br}")
+    buttons.data_button("Back", "vt brback")
+    buttons.data_button("Done", "vt brdone")
+    return buttons.build_menu(1)
 
 
 def _filename_prompt_menu():
@@ -146,6 +206,57 @@ async def edit_video_tool(client, query):
         vstate["remove_stream"] = False
         await query.answer("Remove Stream disabled!")
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "ca":
+        await query.answer()
+        vstate["stage"] = "ca_menu"
+        await edit_message(message, _ca_menu_text(vstate), _ca_menu_buttons())
+    elif action == "cafmt":
+        await query.answer()
+        vstate["stage"] = "ca_format"
+        await edit_message(message, _ca_format_text(vstate), _ca_format_buttons(vstate))
+    elif action == "cabr":
+        if vstate["audio_format"] == "FLAC":
+            return await query.answer(
+                "Bitrate is not applicable for lossless FLAC!", show_alert=True
+            )
+        await query.answer()
+        vstate["stage"] = "ca_bitrate"
+        await edit_message(message, _ca_bitrate_text(vstate), _ca_bitrate_buttons(vstate))
+    elif action == "caback":
+        await query.answer()
+        vstate["audio_format"] = ""
+        vstate["audio_bitrate"] = ""
+        vstate["convert_audio"] = False
+        vstate["stage"] = "menu"
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "cadone":
+        await query.answer()
+        vstate["convert_audio"] = bool(vstate["audio_format"])
+        vstate["stage"] = "menu"
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action.startswith("fmt_"):
+        fmt = action.split("_", 1)[1]
+        if vstate["audio_format"] == fmt:
+            vstate["audio_format"] = ""
+        else:
+            vstate["audio_format"] = fmt
+            if fmt == "FLAC":
+                vstate["audio_bitrate"] = ""
+        await query.answer()
+        await edit_message(message, _ca_format_text(vstate), _ca_format_buttons(vstate))
+    elif action == "fmtback" or action == "fmtdone":
+        await query.answer()
+        vstate["stage"] = "ca_menu"
+        await edit_message(message, _ca_menu_text(vstate), _ca_menu_buttons())
+    elif action.startswith("br_"):
+        br = action.split("_", 1)[1]
+        vstate["audio_bitrate"] = "" if vstate["audio_bitrate"] == br else br
+        await query.answer()
+        await edit_message(message, _ca_bitrate_text(vstate), _ca_bitrate_buttons(vstate))
+    elif action == "brback" or action == "brdone":
+        await query.answer()
+        vstate["stage"] = "ca_menu"
+        await edit_message(message, _ca_menu_text(vstate), _ca_menu_buttons())
     elif action == "back":
         await query.answer()
         vstate["stage"] = "menu"
@@ -160,6 +271,9 @@ async def edit_video_tool(client, query):
         vstate["merge_name"] = ""
         vstate["extract_stream"] = False
         vstate["remove_stream"] = False
+        vstate["convert_audio"] = False
+        vstate["audio_format"] = ""
+        vstate["audio_bitrate"] = ""
         if vstate.get("handler"):
             client.remove_handler(*vstate["handler"])
             vstate["handler"] = None
@@ -182,6 +296,9 @@ async def get_video_tool_settings(listener):
         "merge_name": "",
         "extract_stream": False,
         "remove_stream": False,
+        "convert_audio": False,
+        "audio_format": "",
+        "audio_bitrate": "",
         "stage": "menu",
         "done": False,
         "user_id": listener.user_id,
@@ -203,6 +320,9 @@ async def get_video_tool_settings(listener):
             vstate["merge_name"] = ""
             vstate["extract_stream"] = False
             vstate["remove_stream"] = False
+            vstate["convert_audio"] = False
+            vstate["audio_format"] = ""
+            vstate["audio_bitrate"] = ""
             if vstate.get("handler"):
                 TgClient.bot.remove_handler(*vstate["handler"])
             handler_dict[mid] = False
@@ -218,5 +338,7 @@ async def get_video_tool_settings(listener):
     listener.merge_name = vstate["merge_name"]
     listener.extract_stream = vstate["extract_stream"]
     listener.remove_stream = vstate["remove_stream"]
+    listener.vt_convert_audio = vstate["audio_format"].lower() if vstate["convert_audio"] else ""
+    listener.vt_audio_bitrate = vstate["audio_bitrate"] if vstate["convert_audio"] else ""
     vt_dict.pop(mid, None)
     handler_dict.pop(mid, None)
