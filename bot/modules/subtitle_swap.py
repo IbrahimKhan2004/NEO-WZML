@@ -110,6 +110,20 @@ async def get_subtitle_swap_selection(listener, probe_file):
             })
 
     if len(subtitle_streams) < 2:
+        tag = (
+            listener.message.from_user.mention
+            if getattr(listener.message, "from_user", None)
+            else getattr(listener, "tag", "User")
+        )
+        msg_text = (
+            f"{tag},\n\n"
+            f"<b>Subtitle Swap Skipped!</b>\n"
+            f"Found {len(subtitle_streams)} subtitle stream(s). Re-ordering requires at least 2 subtitle streams."
+        )
+        msg = await send_message(listener.message, msg_text)
+        await sleep(4)
+        with suppress(Exception):
+            await delete_message(msg)
         return None
 
     label_counts = {}
