@@ -1375,7 +1375,7 @@ class TaskConfig:
         if not audio_order and not subtitle_order:
             return dl_path
 
-        status_text = "Audio Swap" if audio_order and not subtitle_order else "Subtitle Swap" if subtitle_order and not audio_order else "FFmpeg"
+        status_text = "Audio Swap" if audio_order and not subtitle_order else "Subtitle Swap" if subtitle_order and not audio_order else "Swapping Streams"
 
         ffmpeg = FFMpeg(self)
         async with task_dict_lock:
