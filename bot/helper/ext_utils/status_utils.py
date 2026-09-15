@@ -43,6 +43,7 @@ class MirrorStatus:
     STATUS_MERGING = "Merging"
     STATUS_REMOVE_STREAM = "Remove Stream"
     STATUS_AUDIO_SWAP = "Audio Swap"
+    STATUS_SUBTITLE_SWAP = "Subtitle Swap"
     STATUS_EXTRACT_STREAM = "Extract Stream"
     STATUS_CONVERT_AUDIO = "Convert Audio"
 
@@ -87,6 +88,7 @@ STATUSES = {
     "MG": MirrorStatus.STATUS_MERGING,
     "RS": MirrorStatus.STATUS_REMOVE_STREAM,
     "AS": MirrorStatus.STATUS_AUDIO_SWAP,
+    "SS": MirrorStatus.STATUS_SUBTITLE_SWAP,
     "ES": MirrorStatus.STATUS_EXTRACT_STREAM,
     "CA": MirrorStatus.STATUS_CONVERT_AUDIO,
 }

@@ -1030,6 +1030,61 @@ class FFMpeg:
                 await remove(output)
             return False
 
+    async def swap_subtitle_streams(self, video_file, subtitle_indices):
+        self.clear()
+        self._total_time = (await get_media_info(video_file))[0]
+        base_name, ext = ospath.splitext(video_file)
+        output = f"{base_name}.subswap{ext}"
+        map_args = ["-map", "0:v?", "-map", "0:a?"]
+        for idx in subtitle_indices:
+            map_args.extend(["-map", f"0:{idx}"])
+        map_args.extend(["-map", "0:d?", "-map", "0:t?"])
+        cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            video_file,
+            *map_args,
+            "-c",
+            "copy",
+            "-threads",
+            f"{threads}",
+            output,
+        ]
+        if self._listener.is_cancelled:
+            return False
+        self._listener.subproc = await create_subprocess_exec(
+            *cmd, stdout=PIPE, stderr=PIPE
+        )
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+        if self._listener.is_cancelled:
+            return False
+        if code == 0:
+            return output
+        elif code == -9:
+            self._listener.is_cancelled = True
+            return False
+        else:
+            try:
+                stderr = stderr.decode().strip()
+            except Exception:
+                stderr = "Unable to decode the error!"
+            LOGGER.error(
+                f"{stderr}. Something went wrong while swapping subtitle streams. Path: {video_file}"
+            )
+            if await aiopath.exists(output):
+                await remove(output)
+            return False
+
     async def remove_streams(self, video_file, map_args):
         self.clear()
         self._total_time = (await get_media_info(video_file))[0]

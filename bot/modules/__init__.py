@@ -30,6 +30,7 @@ from .restart import (
     restart_sessions,
 )
 from .audio_swap import edit_audio_swap_selection
+from .subtitle_swap import edit_subtitle_swap_selection
 from .extract_stream import edit_extract_stream_selection
 from .remove_stream import edit_remove_stream_selection
 from .rss import get_rss_menu, rss_listener
@@ -108,6 +109,7 @@ __all__ = [
     "edit_video_tool",
     "get_video_tool_settings",
     "edit_audio_swap_selection",
+    "edit_subtitle_swap_selection",
     "edit_extract_stream_selection",
     "edit_remove_stream_selection",
     "ytdl",
