@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="light dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Merge Config</title>
+    <script>
+        if (localStorage.theme === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -87,77 +92,58 @@
         }
     </style>
 </head>
-<body class="bg-brand-bg dark:bg-brand-darkBg text-black dark:text-white min-h-screen font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-accent">
-    <div class="max-w-xl mx-auto px-4 py-6 sm:py-8 space-y-6">
+<body class="bg-brand-bg text-brand-primary dark:bg-brand-darkBg dark:text-white p-4 md:p-6 lg:max-w-4xl lg:mx-auto font-sans antialiased selection:bg-brand-accent selection:text-white">
 
-        <!-- Header -->
-        <header class="flex items-center justify-between">
-            <div>
-                <h1 class="text-2xl font-bold tracking-tight text-black dark:text-white">Merge Config</h1>
-            </div>
-            <div class="flex items-center gap-2">
-                <button id="submit-btn" onclick="submitMergeConfig()" class="ios-button-tinted px-4 py-2 text-sm font-semibold">
-                    <i class="fas fa-cog mr-1.5 text-xs"></i>Save
-                </button>
-            </div>
-        </header>
-
-        <!-- Status Notification Banner -->
-        <div id="status-banner" class="hidden rounded-xl p-3 text-xs font-medium flex items-center justify-between transition-all">
-            <span id="status-text"></span>
-            <button onclick="dismissStatus()" class="opacity-60 hover:opacity-100 ml-2">
-                <i class="fas fa-times"></i>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold tracking-tight">Merge Config</h1>
+        <div class="flex items-center gap-4">
+            <button id="theme-btn" onclick="toggleTheme()" class="text-brand-accent dark:text-brand-accent text-xl bg-transparent active:opacity-50 transition-opacity">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:block"></i>
+            </button>
+            <button id="submit-btn" onclick="submitMergeConfig()" class="text-brand-accent dark:text-brand-accent font-semibold text-[17px] bg-transparent active:opacity-50 transition-opacity">
+                Save
             </button>
         </div>
+    </div>
 
-        <!-- Group Selector Bar -->
-        <section class="space-y-2">
-            <div class="flex items-center justify-between text-xs font-semibold tracking-wider text-brand-muted dark:text-brand-darkMuted uppercase px-1">
-                <span>Active Group</span>
-                <button onclick="deleteActiveGroup()" class="text-ios-red dark:text-ios-darkRed hover:opacity-80 transition-opacity">
-                    <i class="fas fa-trash-alt mr-1"></i>Delete
-                </button>
-            </div>
+    <!-- Status Notification -->
+    <div id="status-message" class="text-sm text-center mb-4 font-medium hidden"></div>
 
-            <div class="bento-card p-2 space-y-3">
-                <div class="ios-segment overflow-x-auto hide-scrollbar" id="tabs-container">
-                    <!-- Tabs rendered by JS -->
-                </div>
+    <!-- Group Selector Bar -->
+    <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mb-1.5 ml-4 flex justify-between items-center pr-4">
+        <span>Active Group</span>
+        <button onclick="deleteActiveGroup()" class="text-ios-red dark:text-ios-darkRed active:opacity-50"><i class="fas fa-trash-alt mr-1"></i> Delete</button>
+    </div>
 
-                <div class="flex items-center px-2">
-                    <div class="relative flex-grow">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-brand-muted dark:text-brand-darkMuted">
-                            <i class="fas fa-file-video text-xs"></i>
-                        </div>
-                        <input type="text" id="active-group-name" oninput="updateActiveGroupName(this.value)" placeholder="Output video name..." class="ios-input pl-8 pr-3 py-2.5 w-full font-medium">
-                    </div>
-                </div>
-            </div>
-        </section>
+    <div class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl overflow-hidden mb-2 p-3 transition-colors duration-300">
+        <div class="ios-segment overflow-x-auto hide-scrollbar" id="tabs-container">
+            <!-- Tabs rendered by JS -->
+        </div>
 
-        <!-- Active Group Content -->
-        <section class="space-y-2">
-            <div class="flex items-center justify-between text-xs font-semibold tracking-wider text-brand-muted dark:text-brand-darkMuted uppercase px-1">
-                <span>Merge Sequence (<span id="active-count">0</span>)</span>
-                <span id="active-size" class="text-brand-accent dark:text-brand-accent">0 B</span>
-            </div>
+        <div class="bg-brand-bg dark:bg-[#2c2c2e] rounded-lg mb-2 flex items-center transition-colors duration-300">
+            <span class="pl-3 text-brand-muted dark:text-brand-darkMuted"><i class="fas fa-file-video text-sm"></i></span>
+            <input type="text" id="active-group-name" oninput="updateActiveGroupName(this.value)" placeholder="Merged_Video.mp4" class="w-full border-none text-[16px] p-3 text-black dark:text-white bg-transparent transition-colors duration-300">
+        </div>
+    </div>
 
-            <div id="active-group-files" class="space-y-2 min-h-[100px]">
-                <!-- Item cards rendered by JS -->
-            </div>
-        </section>
+    <!-- Active Group Content -->
+    <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mt-4 mb-1.5 ml-4 flex justify-between items-center pr-4">
+        <span>Merge Sequence (<span id="active-count">0</span>)</span>
+        <span class="text-brand-accent dark:text-brand-accent" id="active-size">0 B</span>
+    </div>
 
-        <!-- Unassigned Pool Section -->
-        <section class="space-y-2 pt-2">
-            <div class="flex items-center justify-between text-xs font-semibold tracking-wider text-brand-muted dark:text-brand-darkMuted uppercase px-1">
-                <span>Available Media (<span id="unassigned-count">0</span>)</span>
-            </div>
+    <div id="active-group-files" class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl overflow-hidden transition-colors duration-300">
+        <!-- Item cards rendered by JS -->
+    </div>
 
-            <div id="unassigned-files" class="space-y-2">
-                <!-- Available media cards rendered by JS -->
-            </div>
-        </section>
+    <!-- Unassigned Pool Section -->
+    <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mt-6 mb-1.5 ml-4">
+        Available Media (<span id="unassigned-count">0</span>)
+    </div>
 
+    <div id="unassigned-files" class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl overflow-hidden transition-colors duration-300">
+        <!-- Available media cards rendered by JS -->
     </div>
 
     <script>
@@ -212,19 +198,16 @@
         }
 
         function showStatus(msg, type = "green") {
-            const banner = document.getElementById('status-banner');
-            const text = document.getElementById('status-text');
-            banner.classList.remove('hidden', 'bg-ios-red/10', 'text-ios-red', 'dark:bg-ios-darkRed/20', 'dark:text-ios-darkRed', 'bg-[#34c759]/10', 'text-[#34c759]');
-            if (type === "red") {
-                banner.classList.add('bg-ios-red/10', 'text-ios-red', 'dark:bg-ios-darkRed/20', 'dark:text-ios-darkRed');
-            } else {
-                banner.classList.add('bg-[#34c759]/10', 'text-[#34c759]');
-            }
-            text.innerText = msg;
+            const el = document.getElementById('status-message');
+            el.classList.remove('hidden', 'text-ios-red', 'dark:text-ios-darkRed', 'text-[#34c759]');
+            el.classList.add(type === "red" ? 'text-ios-red' : 'text-[#34c759]');
+            if (type === "red") el.classList.add('dark:text-ios-darkRed');
+            el.innerText = msg;
         }
 
-        function dismissStatus() {
-            document.getElementById('status-banner').classList.add('hidden');
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
         }
 
         function createNewGroup() {
