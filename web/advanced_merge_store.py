@@ -68,3 +68,15 @@ def get_file_list(gid: str) -> Optional[list]:
     state = read_state(gid)
     files = state.get("files") if state else None
     return files if isinstance(files, list) else None
+
+
+def get_merge_data(gid: str) -> Optional[dict]:
+    state = read_state(gid)
+    if state is None:
+        return None
+    files = state.get("files", [])
+    groups = state.get("groups", [])
+    return {
+        "files": files if isinstance(files, list) else [],
+        "groups": groups if isinstance(groups, list) else []
+    }

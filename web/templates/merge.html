@@ -1,12 +1,496 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Merge Config</title><style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font:14px Inter,Arial,sans-serif;padding:16px;max-width:720px;margin:auto}header{display:flex;justify-content:space-between;align-items:center}h1{font-size:22px}button{border:0;border-radius:7px;padding:8px;color:#fff;background:#25252d;font-weight:700;cursor:pointer}.accent{color:#ff2458;background:none}.label{font-size:10px;color:#aaa;margin:20px 8px 7px}.tabs,.box,.item{background:#0d0d22;border-radius:8px}.tabs{padding:3px;display:flex;gap:3px;overflow:auto}.tabs button.active{background:#555563}.box{padding:10px}.name{width:100%;background:#28282d;color:#fff;border:0;border-radius:6px;padding:12px;margin-top:10px}.head{display:flex;justify-content:space-between}.item{border:1px solid #45455d;margin-bottom:8px;padding:12px;display:flex;align-items:center;gap:9px}.info{flex:1;min-width:0;word-break:break-all}.info b{font-size:12px}.info small{color:#aaa}.number{background:#f22655;border-radius:4px;padding:4px 7px}.controls button{padding:5px;margin:2px}.empty{text-align:center;color:#aaa;padding:25px}.status{text-align:center;color:#4cd964;margin:8px}</style></head><body>
-<header><h1>Merge Config</h1><button id="save" class="accent">Save</button></header><div id="status" class="status"></div><div class="label">ACTIVE GROUP <button id="delete" class="accent" style="float:right">Delete</button></div><div class="box"><div id="tabs" class="tabs"></div><input id="name" class="name"></div><div class="label head"><span>MERGE SEQUENCE (<span id="count">0</span>)</span><span id="size" class="accent">0 B</span></div><div id="assigned" class="box"></div><div class="label">AVAILABLE MEDIA (<span id="available-count">0</span>)</div><div id="available"></div>
-<script>
-const gid=new URLSearchParams(location.search).get('gid');let files=[],groups=[],active=0;
-const bytes=n=>!n?'0 B':(n/1024/1024).toFixed(2).replace(/\.00$/,'')+' MB';
-const group=()=>groups[active];const assigned=()=>new Set(groups.flatMap(g=>g.files));
-function render(){let g=group(),tabsEl=document.getElementById('tabs'),nameEl=document.getElementById('name');tabsEl.innerHTML=groups.map((x,i)=>`<button class="${i==active?'active':''}" onclick="active=${i};render()">Grp ${i+1}</button>`).join('')+'<button class="accent" onclick="groups.push({name:`Merged_Video_${groups.length+1}.mp4`,files:[]});active=groups.length-1;render()">＋</button>';nameEl.value=g.name;document.getElementById('count').textContent=g.files.length;document.getElementById('size').textContent=bytes(g.files.reduce((n,p)=>n+files.find(f=>f.path==p).size,0));document.getElementById('assigned').innerHTML=g.files.length?g.files.map((p,i)=>card(p,i,true)).join(''):'<div class="empty">Empty group. Tap a file below to add.</div>';let free=files.filter(f=>!assigned().has(f.path));['available-count'].forEach(id=>document.getElementById(id).textContent=free.length);document.getElementById('available').innerHTML=free.length?free.map(f=>card(f.path,0,false)).join(''):'<div class="box empty">✓<br>All files assigned.</div>'}
-function card(p,i,inGroup){let f=files.find(x=>x.path==p),a=p.split('/'),n=a.pop();return `<div class="item"><span class="number">${inGroup?i+1:'▶'}</span><div class="info"><b>${n}</b><br><small>${bytes(f.size)}${a.length?' • '+a.join('/')+'/':''}</small></div><div class="controls">${inGroup?`<button onclick="swap(${i},-1)" ${i?'':'disabled'}>⌃</button><button onclick="swap(${i},1)" ${i<group().files.length-1?'':'disabled'}>⌄</button><button class="accent" onclick="group().files.splice(${i},1);render()">−</button>`:`<button class="accent" onclick="group().files.push('${p.replaceAll("'","\\'")}');render()">＋</button>`}</div></div>`}
-function swap(i,d){let a=group().files,j=i+d;[a[i],a[j]]=[a[j],a[i]];render()}document.getElementById('name').oninput=e=>group().name=e.target.value;document.getElementById('delete').onclick=()=>{if(groups.length==1)return alert('You must have at least one group.');groups.splice(active,1);active=0;render()};document.getElementById('save').onclick=async()=>{let r=await fetch('/app/merge/submit?gid='+encodeURIComponent(gid),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groups:groups.filter(g=>g.files.length)})}),d=await r.json();document.getElementById('status').textContent=d.success?'Config Saved. Return to Telegram.':d.error};
-fetch('/app/merge/files?gid='+encodeURIComponent(gid)).then(r=>r.json()).then(d=>{if(d.error)throw Error(d.error);files=d.files;groups=[{name:'Merged_Video_1.mp4',files:[]}];render()}).catch(e=>document.getElementById('status').textContent=e.message);
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Merge Config</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'] },
+                    colors: {
+                        ios: {
+                            bg: '#f2f2f7',
+                            surface: '#ffffff',
+                            divider: '#c6c6c8',
+                            blue: '#007aff',
+                            red: '#ff3b30',
+                            gray: '#8e8e93',
+                            darkBg: '#000000',
+                            darkSurface: '#1c1c1e',
+                            darkDivider: '#38383a',
+                            darkBlue: '#0a84ff',
+                            darkRed: '#ff453a',
+                            darkGray: '#98989d'
+                        },
+                        brand: {
+                            bg: '#F5F5F7',
+                            surface: '#FFFFFF',
+                            border: '#E2E8F0',
+                            primary: '#0F0F23',
+                            secondary: '#1E1B4B',
+                            accent: '#E11D48',
+                            muted: '#64748B',
+                            darkBg: '#000000',
+                            darkSurface: '#0F0F23',
+                            darkBorder: '#1E1B4B',
+                            darkMuted: '#94A3B8'
+                        }
+                    },
+                    boxShadow: {
+                        'bento': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'bento-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .bento-card {
+                @apply bg-brand-surface dark:bg-brand-darkSurface border border-brand-border/60 dark:border-brand-darkBorder/60 rounded-2xl shadow-bento transition-all duration-200;
+            }
+            .ios-button-prominent {
+                @apply bg-brand-accent hover:opacity-90 active:scale-95 text-white font-medium rounded-xl transition-all duration-150 flex items-center justify-center;
+            }
+            .ios-button-tinted {
+                @apply bg-brand-accent/10 dark:bg-brand-accent/20 text-brand-accent hover:bg-brand-accent/20 dark:hover:bg-brand-accent/30 active:scale-95 font-medium rounded-xl transition-all duration-150 flex items-center justify-center;
+            }
+            .ios-segment {
+                @apply bg-[#e3e3e8] dark:bg-[#1c1c1e] p-1 rounded-xl flex items-center gap-1;
+            }
+            .ios-input {
+                @apply bg-brand-bg dark:bg-[#1c1c1e] border-0 text-black dark:text-white rounded-xl focus:ring-2 focus:ring-brand-accent text-sm transition-all;
+            }
+        }
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item {
+            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-brand-bg dark:bg-brand-darkBg text-black dark:text-white min-h-screen font-sans antialiased selection:bg-brand-accent/20 selection:text-brand-accent">
+    <div class="max-w-xl mx-auto px-4 py-6 sm:py-8 space-y-6">
+
+        <!-- Header -->
+        <header class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-black dark:text-white">Merge Config</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="submit-btn" onclick="submitMergeConfig()" class="ios-button-tinted px-4 py-2 text-sm font-semibold">
+                    <i class="fas fa-cog mr-1.5 text-xs"></i>Save
+                </button>
+            </div>
+        </header>
+
+        <!-- Status Notification Banner -->
+        <div id="status-banner" class="hidden rounded-xl p-3 text-xs font-medium flex items-center justify-between transition-all">
+            <span id="status-text"></span>
+            <button onclick="dismissStatus()" class="opacity-60 hover:opacity-100 ml-2">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Group Selector Bar -->
+        <section class="space-y-2">
+            <div class="flex items-center justify-between text-xs font-semibold tracking-wider text-brand-muted dark:text-brand-darkMuted uppercase px-1">
+                <span>Active Group</span>
+                <button onclick="deleteActiveGroup()" class="text-ios-red dark:text-ios-darkRed hover:opacity-80 transition-opacity">
+                    <i class="fas fa-trash-alt mr-1"></i>Delete
+                </button>
+            </div>
+
+            <div class="bento-card p-2 space-y-3">
+                <div class="ios-segment overflow-x-auto hide-scrollbar" id="tabs-container">
+                    <!-- Tabs rendered by JS -->
+                </div>
+
+                <div class="flex items-center px-2">
+                    <div class="relative flex-grow">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-brand-muted dark:text-brand-darkMuted">
+                            <i class="fas fa-file-video text-xs"></i>
+                        </div>
+                        <input type="text" id="active-group-name" oninput="updateActiveGroupName(this.value)" placeholder="Output video name..." class="ios-input pl-8 pr-3 py-2.5 w-full font-medium">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Active Group Content -->
+        <section class="space-y-2">
+            <div class="flex items-center justify-between text-xs font-semibold tracking-wider text-brand-muted dark:text-brand-darkMuted uppercase px-1">
+                <span>Merge Sequence (<span id="active-count">0</span>)</span>
+                <span id="active-size" class="text-brand-accent dark:text-brand-accent">0 B</span>
+            </div>
+
+            <div id="active-group-files" class="space-y-2 min-h-[100px]">
+                <!-- Item cards rendered by JS -->
+            </div>
+        </section>
+
+        <!-- Unassigned Pool Section -->
+        <section class="space-y-2 pt-2">
+            <div class="flex items-center justify-between text-xs font-semibold tracking-wider text-brand-muted dark:text-brand-darkMuted uppercase px-1">
+                <span>Available Media (<span id="unassigned-count">0</span>)</span>
+            </div>
+
+            <div id="unassigned-files" class="space-y-2">
+                <!-- Available media cards rendered by JS -->
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const gid = urlParams.get('gid');
+
+        let allFiles = []; // Array of objects: {path: string, size: number}
+        let groups = [];   // Array of objects: {id, name, files: [{path, size}]}
+        let activeGroupId = null;
+        let groupCounter = 0;
+
+        async function fetchFiles() {
+            if (!gid) { showStatus("Missing GID parameter.", "red"); return; }
+            try {
+                const response = await fetch(`${window.location.pathname.replace(/\/$/, "")}/files?gid=${gid}`);
+                if (!response.ok) throw new Error('Network error');
+                const data = await response.json();
+                if (data.error) { showStatus(data.error, "red"); return; }
+                allFiles = data.files || [];
+                if (data.groups && data.groups.length > 0) {
+                    groups = data.groups.map((g, idx) => {
+                        const groupId = 'group_' + (++groupCounter);
+                        const groupFiles = (g.files || []).map(p => {
+                            const found = allFiles.find(f => f.path === p);
+                            return found || { path: p, size: 0 };
+                        });
+                        return {
+                            id: groupId,
+                            name: g.output_name || g.name || `Merged_Video_${idx + 1}.mp4`,
+                            files: groupFiles
+                        };
+                    });
+                    if (groups.length > 0) activeGroupId = groups[0].id;
+                    renderAll();
+                } else if (groups.length === 0) {
+                    createNewGroup();
+                } else {
+                    renderAll();
+                }
+            } catch (error) {
+                showStatus("Failed to load connection.", "red");
+            }
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function showStatus(msg, type = "green") {
+            const banner = document.getElementById('status-banner');
+            const text = document.getElementById('status-text');
+            banner.classList.remove('hidden', 'bg-ios-red/10', 'text-ios-red', 'dark:bg-ios-darkRed/20', 'dark:text-ios-darkRed', 'bg-[#34c759]/10', 'text-[#34c759]');
+            if (type === "red") {
+                banner.classList.add('bg-ios-red/10', 'text-ios-red', 'dark:bg-ios-darkRed/20', 'dark:text-ios-darkRed');
+            } else {
+                banner.classList.add('bg-[#34c759]/10', 'text-[#34c759]');
+            }
+            text.innerText = msg;
+        }
+
+        function dismissStatus() {
+            document.getElementById('status-banner').classList.add('hidden');
+        }
+
+        function createNewGroup() {
+            groupCounter++;
+            const newId = 'group_' + groupCounter;
+            const defaultName = `Merged_Video_${groupCounter}.mp4`;
+
+            groups.push({
+                id: newId,
+                name: defaultName,
+                files: []
+            });
+
+            activeGroupId = newId;
+            renderAll();
+        }
+
+        function deleteActiveGroup() {
+            if (groups.length <= 1) {
+                showStatus("Error: At least one group is required.", "red");
+                return;
+            }
+            groups = groups.filter(g => g.id !== activeGroupId);
+            activeGroupId = groups[0].id;
+            renderAll();
+        }
+
+        function setActiveGroup(id) {
+            activeGroupId = id;
+            renderAll();
+        }
+
+        function updateActiveGroupName(val) {
+            const grp = groups.find(g => g.id === activeGroupId);
+            if (grp) grp.name = val;
+        }
+
+        function getAssignedFiles() {
+            const assigned = new Set();
+            groups.forEach(g => {
+                g.files.forEach(f => assigned.add(f.path));
+            });
+            return assigned;
+        }
+
+        function moveFileToActiveGroup(filePath) {
+            const fileObj = allFiles.find(f => f.path === filePath);
+            if (!fileObj) return;
+
+            const grp = groups.find(g => g.id === activeGroupId);
+            if (grp) {
+                grp.files.push(fileObj);
+                renderAll();
+            }
+        }
+
+        function removeFileFromGroup(groupId, filePath) {
+            const grp = groups.find(g => g.id === groupId);
+            if (grp) {
+                grp.files = grp.files.filter(f => f.path !== filePath);
+                renderAll();
+            }
+        }
+
+        function moveFileUp(groupId, index) {
+            const grp = groups.find(g => g.id === groupId);
+            if (grp && index > 0) {
+                const temp = grp.files[index];
+                grp.files[index] = grp.files[index - 1];
+                grp.files[index - 1] = temp;
+                renderActiveGroupPanel();
+            }
+        }
+
+        function moveFileDown(groupId, index) {
+            const grp = groups.find(g => g.id === groupId);
+            if (grp && index < grp.files.length - 1) {
+                const temp = grp.files[index];
+                grp.files[index] = grp.files[index + 1];
+                grp.files[index + 1] = temp;
+                renderActiveGroupPanel();
+            }
+        }
+
+        function renderAll() {
+            renderTabs();
+            renderActiveGroupPanel();
+            renderAvailableFiles();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+
+            groups.forEach((g, index) => {
+                const isActive = g.id === activeGroupId;
+                const activeClasses = isActive
+                    ? 'bg-white dark:bg-[#636366] shadow-[0_1px_3px_rgba(0,0,0,0.12)]'
+                    : 'bg-transparent text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5';
+
+                const btn = document.createElement('div');
+                btn.className = `flex-none px-4 text-center py-1.5 text-[13px] font-medium rounded-md cursor-pointer transition-all duration-200 ${activeClasses}`;
+                btn.onclick = () => setActiveGroup(g.id);
+                btn.innerText = `Grp ${index + 1}`;
+                container.appendChild(btn);
+            });
+
+            const addBtn = document.createElement('div');
+            addBtn.className = `flex-none px-4 text-center py-1.5 text-[13px] font-medium rounded-md cursor-pointer text-brand-accent dark:text-brand-accent flex items-center justify-center transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5`;
+            addBtn.onclick = createNewGroup;
+            addBtn.innerHTML = `<i class="fas fa-plus"></i>`;
+            container.appendChild(addBtn);
+        }
+
+        function renderActiveGroupPanel() {
+            const grp = groups.find(g => g.id === activeGroupId);
+            if (!grp) return;
+
+            document.getElementById('active-group-name').value = grp.name;
+            document.getElementById('active-count').innerText = grp.files.length;
+
+            const totalBytes = grp.files.reduce((acc, curr) => acc + (curr.size || 0), 0);
+            document.getElementById('active-size').innerText = formatBytes(totalBytes);
+
+            const container = document.getElementById('active-group-files');
+            container.innerHTML = '';
+
+            if (grp.files.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-brand-muted dark:text-brand-darkMuted text-sm">Empty group. Tap a file below to add.</div>`;
+                return;
+            }
+
+            grp.files.forEach((fileObj, index) => {
+                const pathParts = fileObj.path.split('/');
+                const fileName = pathParts.pop();
+                const folderPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
+
+                const el = document.createElement('div');
+                el.className = 'bento-card p-4 flex items-center mb-3 animate-item group relative cursor-default';
+                el.style.animationDelay = `${index * 30}ms`;
+
+                el.innerHTML = `
+                    <div class="w-[28px] h-[28px] rounded-md bg-brand-accent dark:bg-brand-accent text-white text-xs font-mono font-bold flex items-center justify-center shrink-0 mr-3">
+                        ${index + 1}
+                    </div>
+
+                    <div class="flex-grow min-w-0 pr-2 flex flex-col justify-center py-1">
+                        <div class="text-[16px] font-medium text-black dark:text-white break-all leading-tight">${fileName}</div>
+                        <div class="text-[13px] text-brand-muted dark:text-brand-darkMuted mt-0.5 break-all">
+                            ${formatBytes(fileObj.size)}${folderPath ? ` • ${folderPath}` : ''}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex flex-col gap-1 mr-1">
+                            <button onclick="moveFileUp('${grp.id}', ${index})" class="w-[28px] h-[28px] rounded-md bg-brand-bg dark:bg-[#2c2c2e] text-brand-accent dark:text-brand-accent flex items-center justify-center transition-colors active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c] disabled:opacity-30 disabled:active:bg-brand-bg dark:disabled:active:bg-[#2c2c2e]" ${index === 0 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-up text-[10px]"></i>
+                            </button>
+                            <button onclick="moveFileDown('${grp.id}', ${index})" class="w-[28px] h-[28px] rounded-md bg-brand-bg dark:bg-[#2c2c2e] text-brand-accent dark:text-brand-accent flex items-center justify-center transition-colors active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c] disabled:opacity-30 disabled:active:bg-brand-bg dark:disabled:active:bg-[#2c2c2e]" ${index === grp.files.length - 1 ? 'disabled' : ''}>
+                                <i class="fas fa-chevron-down text-[10px]"></i>
+                            </button>
+                        </div>
+                        <button onclick="removeFileFromGroup('${grp.id}', '${fileObj.path.replace(/'/g, "\\\\'")}')" class="w-[40px] h-[40px] flex items-center justify-center text-[22px] text-ios-red dark:text-ios-darkRed transition-opacity active:opacity-50">
+                            <i class="fas fa-minus-circle"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function renderAvailableFiles() {
+            const container = document.getElementById('unassigned-files');
+            const countBadge = document.getElementById('unassigned-count');
+            container.innerHTML = '';
+
+            const assigned = getAssignedFiles();
+            const unassigned = allFiles.filter(f => !assigned.has(f.path));
+
+            countBadge.innerText = unassigned.length;
+
+            if (unassigned.length === 0) {
+                container.innerHTML = `
+                <div class="p-8 text-center flex flex-col items-center text-brand-muted dark:text-brand-darkMuted">
+                    <i class="fas fa-check-circle text-3xl text-[#34c759] mb-2"></i>
+                    <span class="text-sm">All files assigned.</span>
+                </div>`;
+                return;
+            }
+
+            unassigned.forEach((fileObj, index) => {
+                const pathParts = fileObj.path.split('/');
+                const fileName = pathParts.pop();
+                const folderPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
+
+                const el = document.createElement('div');
+                el.className = 'bento-card p-4 flex items-center mb-3 animate-item group relative cursor-pointer active:bg-[#e5e5ea] dark:active:bg-[#2c2c2e]';
+                el.style.animationDelay = `${(index % 10) * 20}ms`;
+                el.onclick = () => moveFileToActiveGroup(fileObj.path);
+
+                el.innerHTML = `
+                    <div class="w-[28px] h-[28px] rounded-md bg-ios-gray dark:bg-ios-darkGray text-white text-[10px] flex items-center justify-center shrink-0 mr-3">
+                        <i class="fas fa-play"></i>
+                    </div>
+
+                    <div class="flex-grow min-w-0 pr-2 flex flex-col justify-center py-1">
+                        <div class="text-[16px] font-medium text-black dark:text-white break-all leading-tight">${fileName}</div>
+                        <div class="text-[13px] text-brand-muted dark:text-brand-darkMuted mt-0.5 break-all">
+                            ${formatBytes(fileObj.size)}${folderPath ? ` • ${folderPath}` : ''}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center text-brand-accent dark:text-brand-accent opacity-80 pr-2 shrink-0">
+                        <i class="fas fa-plus-circle text-xl"></i>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        async function submitMergeConfig() {
+            const btn = document.getElementById('submit-btn');
+            const validGroups = groups.filter(g => g.files.length > 0).map(g => ({
+                output_name: g.name.trim() || `Merged_Video.mp4`,
+                name: g.name.trim() || `Merged_Video.mp4`,
+                files: g.files.map(f => f.path) // Only send back paths
+            }));
+
+            if (validGroups.length === 0) { showStatus("Error: All groups empty.", "red"); return; }
+
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = 'Saving...';
+            btn.classList.add('opacity-50');
+
+            try {
+                const response = await fetch(`${window.location.pathname.replace(/\/$/, "")}/submit?gid=${gid}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groups: validGroups })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showStatus("Config Saved. Return to Telegram.", "green");
+                    btn.innerHTML = 'Done';
+                    document.querySelectorAll('button:not(#submit-btn), input, .ios-segment, .ios-list-item').forEach(el => {
+                        el.style.opacity = '0.5'; el.style.pointerEvents = 'none';
+                    });
+                } else {
+                    showStatus(data.error || "Failed to save.", "red");
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('opacity-50');
+                }
+            } catch (error) {
+                showStatus("Network Error.", "red");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                btn.classList.remove('opacity-50');
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            fetchFiles();
+        });
+    </script>
+</body>
+</html>
