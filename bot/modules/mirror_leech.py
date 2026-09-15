@@ -55,6 +55,7 @@ from bot.helper.mirror_leech_utils.download_utils.rclone_download import (
 from bot.helper.mirror_leech_utils.download_utils.telegram_download import (
     TelegramDownloadHelper,
 )
+from bot.helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper.message_utils import (
     auto_delete_message,
     delete_links,
@@ -166,11 +167,16 @@ class Mirror(TaskListener):
         arg_parser(input_list[1:], args)
 
         if args["-vt"]:
-            from bot.modules.video_tool import get_video_tool_settings
+            if not await CustomFilters.sudo("", self.message):
+                await send_message(
+                    self.message, "Video Tools (-vt) is restricted to Sudo Users and the Owner only!"
+                )
+            else:
+                from bot.modules.video_tool import get_video_tool_settings
 
-            await get_video_tool_settings(self)
-            if self.merge_video:
-                self.merge_after_extract = True
+                await get_video_tool_settings(self)
+                if self.merge_video:
+                    self.merge_after_extract = True
 
         if Config.DISABLE_BULK and args.get("-b", False):
             await database.remove_shared_task(self.message.id, TgClient.ID, user_id=self.user_id)
