@@ -357,8 +357,9 @@
                     <div class="flex-grow min-w-0 pr-2 flex flex-col justify-center py-1">
                         <div class="text-[16px] font-medium text-black dark:text-white break-all leading-tight">${fileName}</div>
                         <div class="text-[13px] text-brand-muted dark:text-brand-darkMuted mt-0.5 break-all">
-                            ${formatBytes(fileObj.size)}${folderPath ? ` • ${folderPath}` : ''}
+                            ${formatBytes(fileObj.size)}
                         </div>
+                        ${folderPath ? `<div class="text-[12px] text-brand-muted dark:text-brand-darkMuted mt-1 break-all font-mono opacity-75">${folderPath}</div>` : ''}
                     </div>
 
                     <div class="flex items-center gap-2 shrink-0">
@@ -416,8 +417,9 @@
                     <div class="flex-grow min-w-0 pr-2 flex flex-col justify-center py-1">
                         <div class="text-[16px] font-medium text-black dark:text-white break-all leading-tight">${fileName}</div>
                         <div class="text-[13px] text-brand-muted dark:text-brand-darkMuted mt-0.5 break-all">
-                            ${formatBytes(fileObj.size)}${folderPath ? ` • ${folderPath}` : ''}
+                            ${formatBytes(fileObj.size)}
                         </div>
+                        ${folderPath ? `<div class="text-[12px] text-brand-muted dark:text-brand-darkMuted mt-1 break-all font-mono opacity-75">${folderPath}</div>` : ''}
                     </div>
 
                     <div class="flex items-center text-brand-accent dark:text-brand-accent opacity-80 pr-2 shrink-0">
