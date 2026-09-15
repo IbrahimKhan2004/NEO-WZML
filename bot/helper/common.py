@@ -169,6 +169,7 @@ class TaskConfig:
         self.join = False
         self.merge_video = False
         self.merge_after_extract = False
+        self.advanced_merge = False
         self.merge_name = ""
         self.extract_stream = False
         self.remove_stream = False
@@ -1238,6 +1239,32 @@ class TaskConfig:
             await self.on_upload_error(merger.error)
             return False
         return dl_path
+
+    async def proceed_advanced_merge(self, dl_path, gid):
+        from bot.helper.ext_utils.merge_utils import MergeVideos
+        from bot.helper.mirror_leech_utils.status_utils.merge_status import MergeStatus
+        from bot.modules.advanced_merge import get_advanced_merge_config
+
+        config = await get_advanced_merge_config(self, dl_path)
+        if not config:
+            self.is_cancelled = True
+            return False
+        base, groups = config
+        merger = MergeVideos(self)
+        for index, group in enumerate(groups, 1):
+            files = [ospath.join(base, path) for path in group["files"]]
+            async with task_dict_lock:
+                task_dict[self.mid] = MergeStatus(self, merger, gid, index, len(groups))
+            self.progress = False
+            async with cpu_eater_lock:
+                self.progress = True
+                result = await merger.merge(base, gid, files, group["output_name"])
+            if not result:
+                self.is_cancelled = True
+                await self.on_upload_error(merger.error or "Advanced merge failed!")
+                return False
+        self.name = ospath.basename(base)
+        return base
 
     async def proceed_extract_stream(self, dl_path, gid):
         from natsort import natsorted

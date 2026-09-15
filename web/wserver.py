@@ -25,6 +25,10 @@ from web.nodes import (
     make_terabox_tree,
     make_rclone_tree,
 )
+from web.advanced_merge_store import (
+    get_file_list as get_merge_file_list,
+    save_groups as save_merge_groups,
+)
 from web.mega_selection_store import (
     get_file_list as get_mega_file_list,
     update_selected_ids as set_mega_selected_ids,
@@ -129,6 +133,48 @@ async def re_verify(paused, resumed, hash_id):
             return False
     LOGGER.info(f"Verified! Hash: {hash_id}")
     return True
+
+
+@app.get("/app/merge", response_class=HTMLResponse)
+async def advanced_merge_page(request: Request):
+    return templates.TemplateResponse(request, "merge.html")
+
+
+@app.get("/app/merge/files")
+async def advanced_merge_files(gid: str = ""):
+    files = await to_thread(get_merge_file_list, gid)
+    if files is None:
+        return JSONResponse({"error": "Task not found or expired"}, status_code=404)
+    return JSONResponse({"files": files})
+
+
+@app.post("/app/merge/submit")
+async def advanced_merge_submit(request: Request, gid: str = ""):
+    state_files = await to_thread(get_merge_file_list, gid)
+    if state_files is None:
+        return JSONResponse({"success": False, "error": "Task not found or expired"}, status_code=404)
+    try:
+        groups = (await request.json()).get("groups", [])
+    except Exception:
+        groups = []
+    available = {f.get("path") for f in state_files if isinstance(f, dict)}
+    assigned = set()
+    output_names = set()
+    valid = []
+    for group in groups if isinstance(groups, list) else []:
+        name = str(group.get("output_name", "")).strip()
+        files = group.get("files", [])
+        if not name or name != _os.path.basename(name) or name in output_names or not isinstance(files, list):
+            return JSONResponse({"success": False, "error": "Invalid merge group."})
+        if not files or any(f not in available or f in assigned for f in files):
+            return JSONResponse({"success": False, "error": "Invalid or duplicate media selection."})
+        assigned.update(files)
+        output_names.add(name)
+        valid.append({"output_name": name, "files": files})
+    if not valid:
+        return JSONResponse({"success": False, "error": "Add files to at least one group."})
+    ok = await to_thread(save_merge_groups, gid, valid)
+    return JSONResponse({"success": ok, "error": "Could not save configuration." if not ok else ""})
 
 
 @app.get("/app/files", response_class=HTMLResponse)
