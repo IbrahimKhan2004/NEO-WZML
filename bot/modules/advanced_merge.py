@@ -26,6 +26,9 @@ async def get_advanced_merge_config(listener, dl_path):
             path = ospath.join(root, name)
             if name.lower().endswith(VIDEO_EXTS) and await aiopath.isfile(path):
                 files.append({"path": ospath.relpath(path, base), "size": ospath.getsize(path)})
+    from natsort import natsorted
+
+    files = natsorted(files, key=lambda f: f["path"])
     if not files:
         await listener.on_upload_error("No video files found for Advanced Video Merge!")
         return None
