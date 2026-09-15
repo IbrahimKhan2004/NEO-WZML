@@ -64,7 +64,7 @@ def _ca_menu_buttons():
     buttons.data_button("Bitrate", "vt cabr")
     buttons.data_button("Back", "vt caback")
     buttons.data_button("Done", "vt cadone")
-    buttons.data_button("❌ Close", "vt close", "footer")
+    buttons.data_button("Close", "vt close", "footer")
     return buttons.build_menu(2, f_cols=1)
 
 
@@ -224,9 +224,6 @@ async def edit_video_tool(client, query):
         await edit_message(message, _ca_bitrate_text(vstate), _ca_bitrate_buttons(vstate))
     elif action == "caback":
         await query.answer()
-        vstate["audio_format"] = ""
-        vstate["audio_bitrate"] = ""
-        vstate["convert_audio"] = False
         vstate["stage"] = "menu"
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
     elif action == "cadone":
