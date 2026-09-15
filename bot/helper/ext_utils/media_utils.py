@@ -148,6 +148,47 @@ async def download_image_thumb(url):
         return ""
 
 
+AUDIO_ENCODER_MAP = {
+    "aac": "aac",
+    "mp3": "libmp3lame",
+    "flac": "flac",
+    "opus": "libopus",
+    "ac3": "ac3",
+    "wav": "pcm_s16le",
+}
+
+
+async def get_audio_codec(path):
+    try:
+        result = await cmd_exec(
+            [
+                "ffprobe",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-select_streams",
+                "a:0",
+                "-show_entries",
+                "stream=codec_name",
+                "-of",
+                "json",
+                path,
+            ]
+        )
+    except Exception as e:
+        LOGGER.error(f"[AUDIO_CODEC] Exception during ffprobe: {e}")
+        return None
+    if result[0] and result[2] == 0:
+        try:
+            streams = json.loads(result[0]).get("streams")
+        except (json.JSONDecodeError, TypeError) as e:
+            LOGGER.error(f"[AUDIO_CODEC] Failed to parse ffprobe JSON: {e}")
+            return None
+        if streams:
+            return streams[0].get("codec_name")
+    return None
+
+
 async def get_media_info(path, extra_info=False):
     try:
         result = await cmd_exec(
@@ -778,6 +819,8 @@ class FFMpeg:
         self._total_time = (await get_media_info(audio_file))[0]
         base_name = ospath.splitext(audio_file)[0]
         output = f"{base_name}.{ext}"
+        if output == audio_file:
+            output = f"{base_name}.new.{ext}"
         cmd = [
             "taskset",
             "-c",
@@ -818,6 +861,63 @@ class FFMpeg:
                 stderr = "Unable to decode the error!"
             LOGGER.error(
                 f"{stderr}. Something went wrong while converting audio, mostly file need specific codec. Path: {audio_file}"
+            )
+            if await aiopath.exists(output):
+                await remove(output)
+        return False
+
+    async def convert_video_audio(self, video_file, codec, bitrate=None):
+        self.clear()
+        self._total_time = (await get_media_info(video_file))[0]
+        base_name, vext = ospath.splitext(video_file)
+        output = f"{base_name}.new{vext}"
+        encoder = AUDIO_ENCODER_MAP.get(codec, codec)
+        cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            video_file,
+            "-map",
+            "0",
+            "-c",
+            "copy",
+            "-c:a",
+            encoder,
+            "-threads",
+            f"{threads}",
+        ]
+        if bitrate:
+            cmd += ["-b:a", bitrate]
+        cmd.append(output)
+        if self._listener.is_cancelled:
+            return False
+        self._listener.subproc = await create_subprocess_exec(
+            *cmd, stdout=PIPE, stderr=PIPE
+        )
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+        if self._listener.is_cancelled:
+            return False
+        if code == 0:
+            return output
+        elif code == -9:
+            self._listener.is_cancelled = True
+            return False
+        else:
+            try:
+                stderr = stderr.decode().strip()
+            except Exception:
+                stderr = "Unable to decode the error!"
+            LOGGER.error(
+                f"{stderr}. Something went wrong while converting the video's audio track. Path: {video_file}"
             )
             if await aiopath.exists(output):
                 await remove(output)
