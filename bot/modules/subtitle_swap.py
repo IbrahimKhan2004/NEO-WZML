@@ -12,7 +12,7 @@ from bot.helper.telegram_helper.message_utils import delete_message, edit_messag
 
 SSO_TIMEOUT = 15 * 60
 sso_dict = {}
-PAGE_SIZE = 6
+PAGE_SIZE = 100
 
 
 def get_final_subtitle_stream_order(sstate):
