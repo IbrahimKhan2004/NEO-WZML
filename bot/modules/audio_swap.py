@@ -12,7 +12,7 @@ from bot.helper.telegram_helper.message_utils import delete_message, edit_messag
 
 ASO_TIMEOUT = 15 * 60
 aso_dict = {}
-PAGE_SIZE = 6
+PAGE_SIZE = 100
 
 
 def get_final_stream_order(astate):
