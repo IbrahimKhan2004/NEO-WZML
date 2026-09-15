@@ -156,6 +156,7 @@ STREAMWISH_API = ""
 INSTADL_API = ""
 DEBRID_LINK_API = ""
 REAL_DEBRID_API = ""
+CDN_PIXELDRAIN = False
 
 # Web UI / qBittorrent / Aria2c
 BASE_URL = ""  # public URL of this bot's web frontend

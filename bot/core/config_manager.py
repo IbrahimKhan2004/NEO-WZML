@@ -36,6 +36,7 @@ class Config:
     FILELION_API = ""
     MEDIA_STORE = True
     FORCE_SUB_IDS = ""
+    CDN_PIXELDRAIN = False
     GOFILE_API = ""
     GOFILE_FOLDER_ID = ""
     PIXELDRAIN_KEY = ""

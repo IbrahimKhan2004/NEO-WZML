@@ -955,7 +955,7 @@ def onedrive(link):
 def pixeldrain(url):
     url = url.strip("/ ")
     parts = url.split("/")
-    file_id = parts[-1].split("?", 1)[0]
+    file_id = parts[-1].split("?", 1)[0].split("#", 1)[0]
     path_segment = parts[-2] if len(parts) >= 2 else ""
 
     # /l/ is a file list (folder); /f/ and /u/ are single files.
@@ -963,6 +963,8 @@ def pixeldrain(url):
         api_info_url = f"https://pixeldrain.com/api/list/{file_id}"
         download_url = f"https://pixeldrain.com/api/list/{file_id}/zip?download"
     else:
+        if Config.CDN_PIXELDRAIN:
+            return f"https://cdn.pixeldrain.eu.cc/{file_id}"
         api_info_url = f"https://pixeldrain.com/api/file/{file_id}/info"
         download_url = f"https://pixeldrain.com/api/file/{file_id}?download"
 
