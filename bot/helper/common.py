@@ -56,6 +56,7 @@ from bot.helper.ext_utils.media_utils import (
     FFMpeg,
     create_thumb,
     download_image_thumb,
+    get_audio_codec,
     get_document_type,
     get_streams,
     take_ss,
@@ -1408,12 +1409,14 @@ class TaskConfig:
         files_to_convert = []
         for f_path in files:
             is_video, is_audio, _ = await get_document_type(f_path)
-            if (
+            if is_video and is_audio:
+                files_to_convert.append((f_path, "video"))
+            elif (
                 is_audio
                 and not is_video
-                and not f_path.strip().lower().endswith(f".{aext}")
+                and (not aext or not f_path.strip().lower().endswith(f".{aext}"))
             ):
-                files_to_convert.append(f_path)
+                files_to_convert.append((f_path, "audio"))
         if not files_to_convert:
             return dl_path
 
@@ -1423,7 +1426,7 @@ class TaskConfig:
         self.progress = False
         async with cpu_eater_lock:
             self.progress = True
-            for f_path in files_to_convert:
+            for f_path, f_type in files_to_convert:
                 if self.is_cancelled:
                     return False
                 self.proceed_count += 1
@@ -1432,12 +1435,19 @@ class TaskConfig:
                 else:
                     self.subsize = await get_path_size(f_path)
                     self.subname = ospath.basename(f_path)
-                res = await ffmpeg.convert_audio(f_path, aext, bitrate)
+                if f_type == "video":
+                    codec = aext or await get_audio_codec(f_path)
+                    res = await ffmpeg.convert_video_audio(f_path, codec, bitrate) if codec else False
+                else:
+                    res = await ffmpeg.convert_audio(f_path, aext or ospath.splitext(f_path)[1].lstrip("."), bitrate)
                 if self.is_cancelled:
                     return False
                 if res:
                     try:
                         await remove(f_path)
+                        if res != f_path and ospath.splitext(res)[1] == ospath.splitext(f_path)[1]:
+                            await move(res, f_path)
+                            res = f_path
                     except Exception:
                         self.is_cancelled = True
                         return False
