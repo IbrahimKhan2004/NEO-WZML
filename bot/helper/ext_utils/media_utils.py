@@ -886,6 +886,8 @@ class FFMpeg:
             video_file,
             "-map",
             "0",
+            "-map",
+            "-0:t",
             "-c",
             "copy",
             "-c:a",
@@ -994,7 +996,7 @@ class FFMpeg:
         else:
             map_args.extend(["-map", "0:s?"])
 
-        map_args.extend(["-map", "0:d?", "-map", "0:t?"])
+        map_args.extend(["-map", "0:d?", "-map", "-0:t"])
         cmd = [
             "taskset",
             "-c",
@@ -1049,7 +1051,7 @@ class FFMpeg:
         map_args = ["-map", "0:v?", "-map", "0:a?"]
         for idx in subtitle_indices:
             map_args.extend(["-map", f"0:{idx}"])
-        map_args.extend(["-map", "0:d?", "-map", "0:t?"])
+        map_args.extend(["-map", "0:d?", "-map", "-0:t"])
         cmd = [
             "taskset",
             "-c",
