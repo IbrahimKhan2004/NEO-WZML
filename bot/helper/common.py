@@ -1397,6 +1397,49 @@ class TaskConfig:
                     await move(output, f_path)
         return dl_path
 
+    async def proceed_subtitle_swap(self, dl_path, gid):
+        from natsort import natsorted
+
+        from bot.helper.ext_utils.merge_utils import VIDEO_EXTS
+        from bot.modules.subtitle_swap import get_subtitle_swap_selection
+
+        if await aiopath.isfile(dl_path):
+            files = [dl_path] if dl_path.lower().endswith(VIDEO_EXTS) else []
+        else:
+            files = [
+                ospath.join(dirpath, file_)
+                for dirpath, _, filenames in await sync_to_async(walk, dl_path)
+                for file_ in filenames
+                if file_.lower().endswith(VIDEO_EXTS)
+            ]
+        files = natsorted(files)
+        if not files:
+            return dl_path
+
+        selected_order = await get_subtitle_swap_selection(self, files[0])
+        if not selected_order:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Subtitle Swap")
+        self.progress = False
+        async with cpu_eater_lock:
+            self.progress = True
+            for f_path in files:
+                if self.is_cancelled:
+                    return False
+                self.proceed_count += 1
+                self.subname = ospath.basename(f_path)
+                self.subsize = await get_path_size(f_path)
+                output = await ffmpeg.swap_subtitle_streams(f_path, selected_order)
+                if self.is_cancelled:
+                    return False
+                if output:
+                    await remove(f_path)
+                    await move(output, f_path)
+        return dl_path
+
     async def proceed_remove_stream(self, dl_path, gid):
         from natsort import natsorted
 
