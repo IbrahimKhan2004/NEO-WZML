@@ -773,7 +773,7 @@ class FFMpeg:
             )
         return False
 
-    async def convert_audio(self, audio_file, ext):
+    async def convert_audio(self, audio_file, ext, bitrate=None):
         self.clear()
         self._total_time = (await get_media_info(audio_file))[0]
         base_name = ospath.splitext(audio_file)[0]
@@ -792,8 +792,10 @@ class FFMpeg:
             audio_file,
             "-threads",
             f"{threads}",
-            output,
         ]
+        if bitrate:
+            cmd += ["-b:a", bitrate]
+        cmd.append(output)
         if self._listener.is_cancelled:
             return False
         self._listener.subproc = await create_subprocess_exec(
