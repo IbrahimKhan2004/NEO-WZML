@@ -57,6 +57,7 @@ async def get_advanced_merge_config(listener, dl_path):
         await wait_for(done.wait(), timeout=900)
     except TimeoutError:
         await listener.on_upload_error("Advanced Video Merge configuration timed out.")
+        delete_state(gid)
         return None
     finally:
         _pending.pop(gid, None)
