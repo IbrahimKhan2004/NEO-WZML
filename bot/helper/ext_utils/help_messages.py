@@ -353,12 +353,13 @@ merge_video = """<b>✦ MERGE VIDEOS</b>: <code>-mv</code>
 
 video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 
-<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Extract Streams, Remove Stream) before the task starts.
+<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Extract Streams, Remove Stream, Convert Audio) before the task starts.
 
 <b>Options Available in Menu:</b>
 • <b>Video Merge:</b> Concatenate videos in folder order into one file.
 • <b>Extract Streams:</b> Selectively extract specific audio, subtitle, or video streams to standalone files (.m4a, .ass, .mkv). Optionally delete main video files after extraction.
 • <b>Remove Stream:</b> Selectively strip unwanted audio/subtitle/video streams from the video.
+• <b>Convert Audio:</b> Convert audio files to a chosen format (AAC, MP3, FLAC, OPUS, AC3, WAV) with an optional bitrate (40k-320k, or Original). Bitrate selection is disabled for FLAC since it's lossless. Works alongside single leech, unzip, zip, video merge, remove stream and extract stream tasks alike.
 
 <b>Usage:</b>
 <code>/cmd link -vt</code>
@@ -367,7 +368,7 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Video Merge runs after extract. Remove Stream runs after Video Merge. Extract Streams runs after Remove Stream and before FFmpeg commands."""
+<b>Note:</b> Video Merge runs after extract. Remove Stream runs after Video Merge. Convert Audio runs after Remove Stream. Extract Streams runs after Convert Audio and before FFmpeg commands."""
 
 remove_stream = """<b>✦ REMOVE STREAM</b> (via <code>-vt</code> menu)
 
