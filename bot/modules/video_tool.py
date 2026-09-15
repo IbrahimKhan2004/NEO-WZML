@@ -224,6 +224,7 @@ async def edit_video_tool(client, query):
         await edit_message(message, _ca_bitrate_text(vstate), _ca_bitrate_buttons(vstate))
     elif action == "caback":
         await query.answer()
+        vstate["convert_audio"] = bool(vstate["audio_format"])
         vstate["stage"] = "menu"
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
     elif action == "cadone":
