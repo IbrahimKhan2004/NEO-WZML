@@ -49,6 +49,8 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_EXTRACT_STREAM
         elif self._cstatus == "Remove Stream":
             return MirrorStatus.STATUS_REMOVE_STREAM
+        elif self._cstatus == "Convert Audio":
+            return MirrorStatus.STATUS_CONVERT_AUDIO
         else:
             return MirrorStatus.STATUS_FFMPEG
 
