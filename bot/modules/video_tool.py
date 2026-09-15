@@ -306,6 +306,15 @@ async def edit_video_tool(client, query):
         handler_dict[mid] = False
         vstate["done"] = True
     elif action == "done":
+        if not (
+            vstate["merge_video"]
+            or vstate["extract_stream"]
+            or vstate["remove_stream"]
+            or vstate["audio_swap"]
+            or vstate["subtitle_swap"]
+            or vstate["convert_audio"]
+        ):
+            return await query.answer("⚠️ Select Some Mode", show_alert=True)
         await query.answer()
         if vstate.get("handler"):
             client.remove_handler(*vstate["handler"])
