@@ -43,6 +43,7 @@ class MirrorStatus:
     STATUS_MERGING = "Merging"
     STATUS_REMOVE_STREAM = "Remove Stream"
     STATUS_EXTRACT_STREAM = "Extract Stream"
+    STATUS_CONVERT_AUDIO = "Convert Audio"
 
 
 class EngineStatus:
@@ -85,6 +86,7 @@ STATUSES = {
     "MG": MirrorStatus.STATUS_MERGING,
     "RS": MirrorStatus.STATUS_REMOVE_STREAM,
     "ES": MirrorStatus.STATUS_EXTRACT_STREAM,
+    "CA": MirrorStatus.STATUS_CONVERT_AUDIO,
 }
 
 
