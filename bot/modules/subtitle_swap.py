@@ -12,6 +12,7 @@ from bot.helper.telegram_helper.message_utils import delete_message, edit_messag
 
 SSO_TIMEOUT = 15 * 60
 sso_dict = {}
+PAGE_SIZE = 6
 
 
 def get_final_subtitle_stream_order(sstate):
@@ -39,17 +40,35 @@ def _sso_text(tag, sstate, time_left):
 
 def _sso_menu(sstate):
     buttons = ButtonMaker()
-    for idx, stream in enumerate(sstate["subtitle_streams"]):
+    page = sstate.get("page", 0)
+    total_streams = len(sstate["subtitle_streams"])
+    total_pages = (total_streams + PAGE_SIZE - 1) // PAGE_SIZE
+
+    start_idx = page * PAGE_SIZE
+    end_idx = min(start_idx + PAGE_SIZE, total_streams)
+
+    for idx in range(start_idx, end_idx):
+        stream = sstate["subtitle_streams"][idx]
         if idx in sstate["ordered_selection"]:
             rank = sstate["ordered_selection"].index(idx) + 1
             btn_label = f"✅ {rank}. {stream['label']}"
         else:
             btn_label = stream["label"]
         buttons.data_button(btn_label, f"sso tgl {idx}")
+
+    if total_pages > 1:
+        prev_page = (page - 1) % total_pages
+        next_page = (page + 1) % total_pages
+        buttons.data_button("◀️ Prev", f"sso page {prev_page}", "f_body")
+        buttons.data_button(f"{page + 1}/{total_pages}", "sso page_info", "f_body")
+        buttons.data_button("Next ▶️", f"sso page {next_page}", "f_body")
+
     buttons.data_button("🔄 Reset Order", "sso reset", "l_body")
     buttons.data_button("Done", "sso done", "footer")
     buttons.data_button("❌ Close", "sso close", "footer")
-    return buttons.build_menu(2, lb_cols=1, f_cols=2)
+
+    fb_cols = 3 if total_pages > 1 else 0
+    return buttons.build_menu(2, fb_cols=fb_cols, lb_cols=1, f_cols=2)
 
 
 @new_task
@@ -72,6 +91,11 @@ async def edit_subtitle_swap_selection(client, query):
         else:
             sstate["ordered_selection"].append(idx)
         await query.answer()
+    elif action == "page":
+        sstate["page"] = int(parts[2])
+        await query.answer()
+    elif action == "page_info":
+        await query.answer("Use Prev/Next buttons to navigate streams", show_alert=True)
     elif action == "reset":
         sstate["ordered_selection"].clear()
         await query.answer("Subtitle stream selection reset!")
@@ -110,6 +134,20 @@ async def get_subtitle_swap_selection(listener, probe_file):
             })
 
     if len(subtitle_streams) < 2:
+        tag = (
+            listener.message.from_user.mention
+            if getattr(listener.message, "from_user", None)
+            else getattr(listener, "tag", "User")
+        )
+        msg_text = (
+            f"{tag},\n\n"
+            f"<b>Subtitle Swap Skipped!</b>\n"
+            f"Found {len(subtitle_streams)} subtitle stream(s). Re-ordering requires at least 2 subtitle streams."
+        )
+        msg = await send_message(listener.message, msg_text)
+        await sleep(4)
+        with suppress(Exception):
+            await delete_message(msg)
         return None
 
     label_counts = {}
@@ -133,6 +171,7 @@ async def get_subtitle_swap_selection(listener, probe_file):
     sstate = {
         "subtitle_streams": subtitle_streams,
         "ordered_selection": [],
+        "page": 0,
         "user_id": listener.user_id,
         "done": False,
         "closed": False,

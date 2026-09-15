@@ -975,15 +975,26 @@ class FFMpeg:
                 await remove(output_path)
             return False
 
-    async def swap_audio_streams(self, video_file, audio_indices):
+    async def swap_media_streams(self, video_file, audio_indices=None, subtitle_indices=None):
         self.clear()
         self._total_time = (await get_media_info(video_file))[0]
         base_name, ext = ospath.splitext(video_file)
-        output = f"{base_name}.audioswap{ext}"
+        output = f"{base_name}.streamswap{ext}"
         map_args = ["-map", "0:v?"]
-        for idx in audio_indices:
-            map_args.extend(["-map", f"0:{idx}"])
-        map_args.extend(["-map", "0:s?", "-map", "0:d?", "-map", "0:t?"])
+
+        if audio_indices:
+            for idx in audio_indices:
+                map_args.extend(["-map", f"0:{idx}"])
+        else:
+            map_args.extend(["-map", "0:a?"])
+
+        if subtitle_indices:
+            for idx in subtitle_indices:
+                map_args.extend(["-map", f"0:{idx}"])
+        else:
+            map_args.extend(["-map", "0:s?"])
+
+        map_args.extend(["-map", "0:d?", "-map", "0:t?"])
         cmd = [
             "taskset",
             "-c",
@@ -1024,7 +1035,7 @@ class FFMpeg:
             except Exception:
                 stderr = "Unable to decode the error!"
             LOGGER.error(
-                f"{stderr}. Something went wrong while swapping audio streams. Path: {video_file}"
+                f"{stderr}. Something went wrong while swapping streams. Path: {video_file}"
             )
             if await aiopath.exists(output):
                 await remove(output)
