@@ -30,6 +30,8 @@ def _vt_menu(vstate):
     buttons.data_button(f"{es_tick}Extract Streams", "vt es")
     rs_tick = "✅ " if vstate["remove_stream"] else ""
     buttons.data_button(f"{rs_tick}Remove Stream", "vt rs")
+    as_tick = "✅ " if vstate["audio_swap"] else ""
+    buttons.data_button(f"{as_tick}Audio Swap (Change Audio Index)", "vt as")
     ca_tick = "✅ " if vstate["convert_audio"] else ""
     buttons.data_button(f"{ca_tick}Convert Audio", "vt ca")
     buttons.data_button("Done", "vt done")
@@ -206,6 +208,17 @@ async def edit_video_tool(client, query):
         vstate["remove_stream"] = False
         await query.answer("Remove Stream disabled!")
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "as" and not vstate["audio_swap"]:
+        vstate["audio_swap"] = True
+        await query.answer(
+            "⏳ You will be able to select streams after the download is complete",
+            show_alert=True,
+        )
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "as" and vstate["audio_swap"]:
+        vstate["audio_swap"] = False
+        await query.answer("Audio Swap disabled!")
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
     elif action == "ca":
         await query.answer()
         vstate["stage"] = "ca_menu"
@@ -269,6 +282,7 @@ async def edit_video_tool(client, query):
         vstate["merge_name"] = ""
         vstate["extract_stream"] = False
         vstate["remove_stream"] = False
+        vstate["audio_swap"] = False
         vstate["convert_audio"] = False
         vstate["audio_format"] = ""
         vstate["audio_bitrate"] = ""
@@ -294,6 +308,7 @@ async def get_video_tool_settings(listener):
         "merge_name": "",
         "extract_stream": False,
         "remove_stream": False,
+        "audio_swap": False,
         "convert_audio": False,
         "audio_format": "",
         "audio_bitrate": "",
@@ -318,6 +333,7 @@ async def get_video_tool_settings(listener):
             vstate["merge_name"] = ""
             vstate["extract_stream"] = False
             vstate["remove_stream"] = False
+            vstate["audio_swap"] = False
             vstate["convert_audio"] = False
             vstate["audio_format"] = ""
             vstate["audio_bitrate"] = ""
@@ -336,6 +352,7 @@ async def get_video_tool_settings(listener):
     listener.merge_name = vstate["merge_name"]
     listener.extract_stream = vstate["extract_stream"]
     listener.remove_stream = vstate["remove_stream"]
+    listener.audio_swap = vstate["audio_swap"]
     listener.vt_convert_audio = vstate["audio_format"].lower() if vstate["convert_audio"] else ""
     listener.vt_audio_bitrate = vstate["audio_bitrate"] if vstate["convert_audio"] else ""
     vt_dict.pop(mid, None)
