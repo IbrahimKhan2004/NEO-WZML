@@ -963,10 +963,12 @@ def pixeldrain(url):
         api_info_url = f"https://pixeldrain.com/api/list/{file_id}"
         download_url = f"https://pixeldrain.com/api/list/{file_id}/zip?download"
     else:
-        if Config.CDN_PIXELDRAIN:
-            return f"https://cdn.pixeldrain.eu.cc/{file_id}"
         api_info_url = f"https://pixeldrain.com/api/file/{file_id}/info"
-        download_url = f"https://pixeldrain.com/api/file/{file_id}?download"
+        download_url = (
+            f"https://cdn.pixeldrain.eu.cc/{file_id}"
+            if Config.USE_PIXELDRAIN_CDN
+            else f"https://pixeldrain.com/api/file/{file_id}?download"
+        )
 
     with create_scraper() as session:
         try:
