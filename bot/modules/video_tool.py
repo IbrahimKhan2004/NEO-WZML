@@ -64,8 +64,8 @@ def _ca_menu_buttons():
     buttons.data_button("Bitrate", "vt cabr")
     buttons.data_button("Back", "vt caback")
     buttons.data_button("Done", "vt cadone")
-    buttons.data_button("Close", "vt close")
-    return buttons.build_menu(1)
+    buttons.data_button("❌ Close", "vt close", "footer")
+    return buttons.build_menu(2, f_cols=1)
 
 
 def _ca_format_text(vstate):
@@ -82,7 +82,7 @@ def _ca_format_buttons(vstate):
         buttons.data_button(f"{tick}{fmt}", f"vt fmt_{fmt}")
     buttons.data_button("Back", "vt fmtback")
     buttons.data_button("Done", "vt fmtdone")
-    return buttons.build_menu(1)
+    return buttons.build_menu(2)
 
 
 def _ca_bitrate_text(vstate):
@@ -99,7 +99,7 @@ def _ca_bitrate_buttons(vstate):
         buttons.data_button(f"{tick}{br}", f"vt br_{br}")
     buttons.data_button("Back", "vt brback")
     buttons.data_button("Done", "vt brdone")
-    return buttons.build_menu(1)
+    return buttons.build_menu(2)
 
 
 def _filename_prompt_menu():
