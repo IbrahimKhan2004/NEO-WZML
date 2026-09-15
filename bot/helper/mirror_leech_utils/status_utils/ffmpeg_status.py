@@ -51,6 +51,8 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_REMOVE_STREAM
         elif self._cstatus == "Audio Swap":
             return MirrorStatus.STATUS_AUDIO_SWAP
+        elif self._cstatus == "Subtitle Swap":
+            return MirrorStatus.STATUS_SUBTITLE_SWAP
         elif self._cstatus == "Convert Audio":
             return MirrorStatus.STATUS_CONVERT_AUDIO
         else:

@@ -212,6 +212,9 @@ def add_handlers():
         CallbackQueryHandler(edit_audio_swap_selection, filters=regex("^aso"))
     )
     TgClient.bot.add_handler(
+        CallbackQueryHandler(edit_subtitle_swap_selection, filters=regex("^sso"))
+    )
+    TgClient.bot.add_handler(
         MessageHandler(
             uphoster,
             filters=command(BotCommands.UpHosterCommand, case_sensitive=True)
