@@ -27,6 +27,7 @@ from web.nodes import (
 )
 from web.advanced_merge_store import (
     get_file_list as get_merge_file_list,
+    get_merge_data,
     save_groups as save_merge_groups,
 )
 from web.mega_selection_store import (
@@ -71,14 +72,25 @@ SERVICES = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global aria2, qbittorrent, proxy_session
-    aria2 = Aria2HttpClient("http://localhost:6800/jsonrpc")
-    qbittorrent = await create_client(
-        SERVICES["qbit"]["url"].rstrip("/") + "/api/v2/"
-    )
+    try:
+        aria2 = Aria2HttpClient("http://localhost:6800/jsonrpc")
+        qbittorrent = await create_client(
+            SERVICES["qbit"]["url"].rstrip("/") + "/api/v2/"
+        )
+    except Exception as e:
+        LOGGER.warning(f"Torrent/Aria services not connected on startup: {e}")
     proxy_session = ClientSession(auto_decompress=True)
     yield
-    await aria2.close()
-    await qbittorrent.close()
+    if aria2:
+        try:
+            await aria2.close()
+        except Exception:
+            pass
+    if qbittorrent:
+        try:
+            await qbittorrent.close()
+        except Exception:
+            pass
     if proxy_session is not None:
         await proxy_session.close()
 
@@ -142,10 +154,10 @@ async def advanced_merge_page(request: Request):
 
 @app.get("/app/merge/files")
 async def advanced_merge_files(gid: str = ""):
-    files = await to_thread(get_merge_file_list, gid)
-    if files is None:
+    data = await to_thread(get_merge_data, gid)
+    if data is None:
         return JSONResponse({"error": "Task not found or expired"}, status_code=404)
-    return JSONResponse({"files": files})
+    return JSONResponse(data)
 
 
 @app.post("/app/merge/submit")
@@ -162,7 +174,7 @@ async def advanced_merge_submit(request: Request, gid: str = ""):
     output_names = set()
     valid = []
     for group in groups if isinstance(groups, list) else []:
-        name = str(group.get("output_name", "")).strip()
+        name = str(group.get("output_name") or group.get("name") or "").strip()
         files = group.get("files", [])
         if not name or name != _os.path.basename(name) or name in output_names or not isinstance(files, list):
             return JSONResponse({"success": False, "error": "Invalid merge group."})
