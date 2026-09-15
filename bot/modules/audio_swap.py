@@ -12,6 +12,7 @@ from bot.helper.telegram_helper.message_utils import delete_message, edit_messag
 
 ASO_TIMEOUT = 15 * 60
 aso_dict = {}
+PAGE_SIZE = 6
 
 
 def get_final_stream_order(astate):
@@ -39,17 +40,35 @@ def _aso_text(tag, astate, time_left):
 
 def _aso_menu(astate):
     buttons = ButtonMaker()
-    for idx, stream in enumerate(astate["audio_streams"]):
+    page = astate.get("page", 0)
+    total_streams = len(astate["audio_streams"])
+    total_pages = (total_streams + PAGE_SIZE - 1) // PAGE_SIZE
+
+    start_idx = page * PAGE_SIZE
+    end_idx = min(start_idx + PAGE_SIZE, total_streams)
+
+    for idx in range(start_idx, end_idx):
+        stream = astate["audio_streams"][idx]
         if idx in astate["ordered_selection"]:
             rank = astate["ordered_selection"].index(idx) + 1
             btn_label = f"✅ {rank}. {stream['label']}"
         else:
             btn_label = stream["label"]
         buttons.data_button(btn_label, f"aso tgl {idx}")
+
+    if total_pages > 1:
+        prev_page = (page - 1) % total_pages
+        next_page = (page + 1) % total_pages
+        buttons.data_button("◀️ Prev", f"aso page {prev_page}", "f_body")
+        buttons.data_button(f"{page + 1}/{total_pages}", "aso page_info", "f_body")
+        buttons.data_button("Next ▶️", f"aso page {next_page}", "f_body")
+
     buttons.data_button("🔄 Reset Order", "aso reset", "l_body")
     buttons.data_button("Done", "aso done", "footer")
     buttons.data_button("❌ Close", "aso close", "footer")
-    return buttons.build_menu(2, lb_cols=1, f_cols=2)
+
+    fb_cols = 3 if total_pages > 1 else 0
+    return buttons.build_menu(2, fb_cols=fb_cols, lb_cols=1, f_cols=2)
 
 
 @new_task
@@ -72,6 +91,11 @@ async def edit_audio_swap_selection(client, query):
         else:
             astate["ordered_selection"].append(idx)
         await query.answer()
+    elif action == "page":
+        astate["page"] = int(parts[2])
+        await query.answer()
+    elif action == "page_info":
+        await query.answer("Use Prev/Next buttons to navigate streams", show_alert=True)
     elif action == "reset":
         astate["ordered_selection"].clear()
         await query.answer("Audio stream selection reset!")
@@ -147,6 +171,7 @@ async def get_audio_swap_selection(listener, probe_file):
     astate = {
         "audio_streams": audio_streams,
         "ordered_selection": [],
+        "page": 0,
         "user_id": listener.user_id,
         "done": False,
         "closed": False,
