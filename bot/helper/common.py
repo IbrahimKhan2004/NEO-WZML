@@ -171,6 +171,8 @@ class TaskConfig:
         self.merge_name = ""
         self.extract_stream = False
         self.remove_stream = False
+        self.vt_convert_audio = ""
+        self.vt_audio_bitrate = ""
         self.private_link = False
         self.stop_duplicate = False
         self.sample_video = False
@@ -1389,6 +1391,58 @@ class TaskConfig:
                 if output:
                     await remove(f_path)
                     await move(output, f_path)
+        return dl_path
+
+    async def proceed_convert_audio(self, dl_path, gid):
+        if await aiopath.isfile(dl_path):
+            files = [dl_path]
+        else:
+            files = [
+                ospath.join(dirpath, file_)
+                for dirpath, _, filenames in await sync_to_async(walk, dl_path)
+                for file_ in filenames
+            ]
+
+        aext = self.vt_convert_audio
+        bitrate = self.vt_audio_bitrate or None
+        files_to_convert = []
+        for f_path in files:
+            is_video, is_audio, _ = await get_document_type(f_path)
+            if (
+                is_audio
+                and not is_video
+                and not f_path.strip().lower().endswith(f".{aext}")
+            ):
+                files_to_convert.append(f_path)
+        if not files_to_convert:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Convert Audio")
+        self.progress = False
+        async with cpu_eater_lock:
+            self.progress = True
+            for f_path in files_to_convert:
+                if self.is_cancelled:
+                    return False
+                self.proceed_count += 1
+                if self.is_file:
+                    self.subsize = self.size
+                else:
+                    self.subsize = await get_path_size(f_path)
+                    self.subname = ospath.basename(f_path)
+                res = await ffmpeg.convert_audio(f_path, aext, bitrate)
+                if self.is_cancelled:
+                    return False
+                if res:
+                    try:
+                        await remove(f_path)
+                    except Exception:
+                        self.is_cancelled = True
+                        return False
+                    if self.is_file:
+                        return res
         return dl_path
 
     async def _is_image_file(self, f_path):
