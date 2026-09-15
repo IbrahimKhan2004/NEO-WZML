@@ -12,12 +12,14 @@ from bot.helper.ext_utils.status_utils import (
 
 
 class MergeStatus:
-    def __init__(self, listener, obj, gid):
+    def __init__(self, listener, obj, gid, group=0, total=0):
         self.listener = listener
         self._obj = obj
         self._gid = gid
         self._start_time = time()
         self.engine = EngineStatus().STATUS_FFMPEG
+        self._group = group
+        self._total = total
 
     def gid(self):
         return self._gid
@@ -38,7 +40,7 @@ class MergeStatus:
         return get_readable_file_size(self._obj.processed_bytes)
 
     def name(self):
-        return self.listener.name
+        return f"Video Merge ({self._group}/{self._total}): {self.listener.name}" if self._total else self.listener.name
 
     def size(self):
         return get_readable_file_size(self.listener.size)

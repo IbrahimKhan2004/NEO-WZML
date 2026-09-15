@@ -58,11 +58,13 @@ class MergeVideos:
                 return output_path
             count += 1
 
-    async def merge(self, dl_path, gid):
+    async def merge(self, dl_path, gid, selected_files=None, output_name=""):
         dirpath = dl_path if await aiopath.isdir(dl_path) else ospath.dirname(dl_path)
         base_name = ospath.basename(dl_path)
         name, _ = ospath.splitext(base_name)
-        if getattr(self._listener, "merge_name", ""):
+        if output_name:
+            output_path = ospath.join(dirpath, output_name)
+        elif getattr(self._listener, "merge_name", ""):
             output_path = ospath.join(dirpath, self._listener.merge_name)
         else:
             output_path = await self._get_available_output_path(dirpath, name)
@@ -81,7 +83,7 @@ class MergeVideos:
                 and await aiopath.isfile(f_path)
             ):
                 videos.append(f_path)
-        videos = natsorted(videos)
+        videos = selected_files or natsorted(videos)
         if not videos:
             LOGGER.warning(f"MergeVideos: no video files found in {dirpath}")
             return None
