@@ -31,7 +31,7 @@ class TgClient:
         kwargs["parse_mode"] = enums.ParseMode.HTML
         kwargs["in_memory"] = True
         for param, value in {
-            "max_concurrent_transmissions": 6,
+            "max_concurrent_transmissions": 8,
             "skip_updates": False,
         }.items():
             if param in signature(Client.__init__).parameters:
@@ -138,13 +138,25 @@ class TgClient:
     async def stop(cls):
         async with cls._lock:
             if cls.bot:
-                await cls.bot.stop()
+                try:
+                    await cls.bot.stop()
+                except Exception as e:
+                    LOGGER.error(f"Error stopping bot client: {e}")
                 cls.bot = None
             if cls.user:
-                await cls.user.stop()
+                try:
+                    await cls.user.stop()
+                except Exception as e:
+                    LOGGER.error(f"Error stopping user client: {e}")
                 cls.user = None
             if cls.helper_bots:
-                await gather(*[h_bot.stop() for h_bot in cls.helper_bots.values()])
+                results = await gather(
+                    *[h_bot.stop() for h_bot in cls.helper_bots.values()],
+                    return_exceptions=True,
+                )
+                for result in results:
+                    if isinstance(result, Exception):
+                        LOGGER.error(f"Error stopping helper bot client: {result}")
                 cls.helper_bots = {}
             LOGGER.info("All Client(s) stopped")
 
