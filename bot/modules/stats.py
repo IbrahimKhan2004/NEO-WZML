@@ -51,6 +51,7 @@ commands = {
         [BinConfig.FFMPEG_NAME, "-version"],
         r"ffmpeg version ([\d.]+(-\w+)?).*",
     ),
+    "mkvmerge": (["mkvmerge", "-V"], r"mkvmerge v([\d.]+)"),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
     "aiohttp": (["uv", "pip", "show", "aiohttp"], r"Version: ([\d.]+)"),
     "pyroblack": (["uv", "pip", "show", "pyroblack"], r"Version: ([\d.]+)"),
