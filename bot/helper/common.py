@@ -1263,6 +1263,8 @@ class TaskConfig:
                 self.progress = True
                 result = await merger.merge(base, gid, files, group["output_name"])
             if not result:
+                if self.is_cancelled:
+                    return False
                 self.is_cancelled = True
                 await self.on_upload_error(merger.error or "Advanced merge failed!")
                 return False
