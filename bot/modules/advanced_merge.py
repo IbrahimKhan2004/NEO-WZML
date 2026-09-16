@@ -54,6 +54,12 @@ async def get_advanced_merge_config(listener, dl_path):
         "I will wait up to 15 minutes for your submission.",
         buttons.build_menu(1),
     )
+    from bot import task_dict, task_dict_lock
+    from bot.helper.mirror_leech_utils.status_utils.merge_status import AdvancedMergeStatus
+
+    async with task_dict_lock:
+        task_dict[listener.mid] = AdvancedMergeStatus(listener, gid)
+
     try:
         await wait_for(done.wait(), timeout=900)
     except TimeoutError:
@@ -62,6 +68,8 @@ async def get_advanced_merge_config(listener, dl_path):
         return None
     finally:
         _pending.pop(gid, None)
+        async with task_dict_lock:
+            task_dict.pop(listener.mid, None)
         await delete_message(msg)
     groups = get_groups(gid)
     delete_state(gid)
