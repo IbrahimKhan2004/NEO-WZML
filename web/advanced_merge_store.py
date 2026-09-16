@@ -4,7 +4,7 @@ import json
 import os
 from typing import Optional
 
-_BASE_DIR = "/usr/src/app/downloads/.advanced_merge"
+_BASE_DIR = os.path.join(os.getcwd(), "downloads", ".advanced_merge")
 
 
 def _path(gid: str) -> str:
