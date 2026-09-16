@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en" class="light dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sync Streams Config</title>
+    <script>
+        if (localStorage.theme === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'] },
+                    colors: {
+                        ios: {
+                            bg: '#f2f2f7',
+                            surface: '#ffffff',
+                            divider: '#c6c6c8',
+                            blue: '#007aff',
+                            red: '#ff3b30',
+                            gray: '#8e8e93',
+                            darkBg: '#000000',
+                            darkSurface: '#1c1c1e',
+                            darkDivider: '#38383a',
+                            darkBlue: '#0a84ff',
+                            darkRed: '#ff453a',
+                            darkGray: '#98989d'
+                        },
+                        brand: {
+                            bg: '#F5F5F7',
+                            surface: '#FFFFFF',
+                            border: '#E2E8F0',
+                            primary: '#0F0F23',
+                            secondary: '#1E1B4B',
+                            accent: '#E11D48',
+                            muted: '#64748B',
+                            darkBg: '#000000',
+                            darkSurface: '#0F0F23',
+                            darkBorder: '#1E1B4B',
+                            darkMuted: '#94A3B8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-brand-bg text-brand-primary dark:bg-brand-darkBg dark:text-white p-4 md:p-6 lg:max-w-4xl lg:mx-auto font-sans antialiased selection:bg-brand-accent selection:text-white">
+    <header class="fixed top-0 left-0 w-full bg-brand-surface/90 dark:bg-brand-darkSurface/90 backdrop-blur-md border-b border-brand-border dark:border-brand-darkBorder z-50 transition-colors">
+        <div class="max-w-3xl mx-auto px-4 h-11 flex items-center justify-between">
+            <button id="theme-btn" onclick="toggleTheme()" class="text-brand-accent dark:text-brand-accent text-xl bg-transparent active:opacity-50 transition-opacity">
+                <i class="fas fa-sun dark:hidden"></i>
+                <i class="fas fa-moon hidden dark:block"></i>
+            </button>
+            <h1 class="text-[17px] font-semibold text-center flex-1 mx-4 truncate">Sync Streams Config</h1>
+            <button id="submit-btn" onclick="submitConfig()" class="text-brand-accent dark:text-brand-accent font-semibold text-[17px] bg-transparent active:opacity-50 transition-opacity">
+                Done
+            </button>
+        </div>
+    </header>
+
+    <main class="pt-16 px-4 max-w-3xl mx-auto space-y-6" id="main-content">
+        <div id="loading" class="text-center text-brand-muted dark:text-brand-darkMuted mt-10 hidden">
+            <i class="fas fa-spinner fa-spin text-2xl"></i>
+            <p class="mt-2 text-[15px]">Loading files...</p>
+        </div>
+
+        <div id="error-msg" class="hidden text-center text-ios-red dark:text-ios-darkRed mt-10 p-4 bg-brand-surface dark:bg-brand-darkSurface rounded-xl border border-brand-border dark:border-brand-darkBorder">
+            <i class="fas fa-exclamation-circle text-2xl mb-2"></i>
+            <p id="error-text" class="text-[15px]"></p>
+        </div>
+
+        <div id="content-container">
+            <div id="videos-list" class="space-y-6">
+                <!-- Video Cards Rendered by JS -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const gid = urlParams.get('gid');
+        let filesData = [];
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        }
+
+        async function fetchConfig() {
+            if (!gid) {
+                showError("Missing GID parameter.");
+                return;
+            }
+            document.getElementById('loading').classList.remove('hidden');
+            try {
+                const response = await fetch(`${window.location.pathname.replace(/\/$/, "")}/files?gid=${gid}`);
+                document.getElementById('loading').classList.add('hidden');
+                if (!response.ok) throw new Error("Failed to load task settings");
+                const data = await response.json();
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                filesData = data.files || [];
+                renderFiles(filesData, data.delays || {});
+            } catch (err) {
+                document.getElementById('loading').classList.add('hidden');
+                showError(err.message || "Failed to connect to server.");
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('error-msg').classList.remove('hidden');
+            document.getElementById('error-text').innerText = msg;
+            document.getElementById('submit-btn').classList.add('hidden');
+        }
+
+        function renderFiles(files, existingDelays) {
+            const container = document.getElementById('videos-list');
+            container.innerHTML = '';
+
+            if (files.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-brand-muted dark:text-brand-darkMuted text-sm">No streamable video files found.</div>`;
+                return;
+            }
+
+            files.forEach((fileObj) => {
+                const filePath = fileObj.path;
+                const fileDelays = existingDelays[filePath] || {};
+                const tracks = fileObj.tracks || [];
+
+                const card = document.createElement('div');
+                card.className = 'bg-brand-surface dark:bg-brand-darkSurface rounded-[14px] border border-brand-border dark:border-brand-darkBorder';
+
+                const header = document.createElement('div');
+                header.className = 'px-4 py-3 bg-gray-50 dark:bg-[#2c2c2e] border-b border-brand-border dark:border-brand-darkBorder rounded-t-[14px]';
+                header.innerHTML = `<h2 class="text-[15px] font-semibold text-brand-accent dark:text-brand-accent break-all" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(filePath)}</h2>`;
+                card.appendChild(header);
+
+                const body = document.createElement('div');
+                body.className = 'p-4 space-y-4';
+
+                if (tracks.length === 0) {
+                    body.innerHTML = `<div class="text-sm text-brand-muted dark:text-brand-darkMuted">No audio or subtitle streams available for sync.</div>`;
+                } else {
+                    const streamsWrapper = document.createElement('div');
+                    streamsWrapper.className = 'space-y-2';
+                    streamsWrapper.innerHTML = `<label class="text-[13px] font-semibold text-brand-muted uppercase tracking-wide px-1 mt-4 block">Streams</label>`;
+
+                    const tracksList = document.createElement('div');
+                    tracksList.className = 'space-y-3';
+
+                    tracks.forEach((track) => {
+                        const trackId = track.id;
+                        const trackType = track.type || 'audio';
+                        const iconClass = trackType === 'audio' ? 'fa-music text-blue-500' : 'fa-closed-captioning text-green-500';
+                        const codec = track.codec || '';
+                        const titleLang = track.title || track.language || '';
+                        const trackLabel = `Track ${trackId}: ${trackType}${titleLang ? ` (${escapeHtml(titleLang)})` : ''}`;
+                        const currentDelay = fileDelays[trackId] !== undefined ? fileDelays[trackId] : (track.delay || '');
+
+                        const trackCard = document.createElement('div');
+                        trackCard.className = 'bg-brand-bg dark:bg-brand-darkBg rounded-xl p-3 border border-transparent transition-all relative';
+                        trackCard.innerHTML = `
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas ${iconClass}"></i>
+                                    <span class="font-semibold text-[15px] capitalize">${escapeHtml(trackLabel)}</span>
+                                    ${codec ? `<span class="text-xs text-brand-muted px-1.5 py-0.5 bg-ios-divider/30 dark:bg-ios-darkDivider/30 rounded">${escapeHtml(codec)}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="space-y-2.5">
+                                <div class="flex flex-col gap-2 relative">
+                                    <div class="flex gap-2 w-full">
+                                        <div class="flex items-center gap-2 w-full bg-brand-surface dark:bg-brand-darkSurface border border-brand-border dark:border-brand-darkBorder rounded-lg px-3 py-2">
+                                            <span class="text-[14px] font-medium whitespace-nowrap text-brand-muted">Sync Delay (ms):</span>
+                                            <input type="number" step="any" data-file="${escapeHtml(filePath)}" data-track="${trackId}" value="${currentDelay}" placeholder="0" class="w-full bg-transparent text-black dark:text-white border-none text-[15px] focus:outline-none focus:ring-0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        tracksList.appendChild(trackCard);
+                    });
+
+                    streamsWrapper.appendChild(tracksList);
+                    body.appendChild(streamsWrapper);
+                }
+
+                card.appendChild(body);
+                container.appendChild(card);
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        async function submitConfig() {
+            const btn = document.getElementById('submit-btn');
+            const inputs = document.querySelectorAll('input[data-file][data-track]');
+            const delays = {};
+
+            inputs.forEach(input => {
+                const file = input.getAttribute('data-file');
+                const track = input.getAttribute('data-track');
+                const valStr = input.value.trim();
+                if (valStr !== '') {
+                    const val = parseFloat(valStr);
+                    if (!isNaN(val) && val !== 0) {
+                        if (!delays[file]) delays[file] = {};
+                        delays[file][track] = val;
+                    }
+                }
+            });
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+
+            try {
+                const response = await fetch(`${window.location.pathname.replace(/\/$/, "")}/submit?gid=${gid}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ delays: delays })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('main-content').innerHTML = `
+                        <div class="text-center mt-20">
+                            <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 text-white text-4xl shadow-lg">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold mb-2">Success!</h2>
+                            <p class="text-brand-muted dark:text-brand-darkMuted text-[15px]">Your configuration has been saved.</p>
+                            <p class="text-brand-muted dark:text-brand-darkMuted mt-2 text-[15px]">You can close this window and return to Telegram.</p>
+                        </div>
+                    `;
+                    btn.classList.add('hidden');
+                } else {
+                    alert(data.error || "Failed to save configuration.");
+                    btn.disabled = false;
+                    btn.innerText = 'Done';
+                }
+            } catch (err) {
+                alert("Network error. Please try again.");
+                btn.disabled = false;
+                btn.innerText = 'Done';
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchConfig);
+    </script>
+</body>
+</html>

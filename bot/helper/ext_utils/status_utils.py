@@ -46,6 +46,7 @@ class MirrorStatus:
     STATUS_SUBTITLE_SWAP = "Subtitle Swap"
     STATUS_EXTRACT_STREAM = "Extract Stream"
     STATUS_CONVERT_AUDIO = "Convert Audio"
+    STATUS_SYNC_STREAMS = "Sync Streams"
     STATUS_WAITING = "Waiting for User"
 
 
@@ -61,6 +62,7 @@ class EngineStatus:
         self.STATUS_TERABOX = f"teraboxSDK v{ver.get('terabox', '1.0.0')}"
         self.STATUS_YTDLP = f"yt-dlp v{ver.get('yt-dlp', 'N/A')}"
         self.STATUS_FFMPEG = f"ffmpeg v{ver.get('ffmpeg', 'N/A')}"
+        self.STATUS_MKVMERGE = f"MKVMerge v{ver.get('mkvmerge', '97.0')}"
         self.STATUS_7Z = f"7z v{ver.get('7z', 'N/A')}"
         self.STATUS_RCLONE = f"RClone v{ver.get('rclone', 'N/A')}"
         self.STATUS_QUEUE = "QSystem v2"
@@ -92,6 +94,7 @@ STATUSES = {
     "SS": MirrorStatus.STATUS_SUBTITLE_SWAP,
     "ES": MirrorStatus.STATUS_EXTRACT_STREAM,
     "CA": MirrorStatus.STATUS_CONVERT_AUDIO,
+    "SY": MirrorStatus.STATUS_SYNC_STREAMS,
     "WU": MirrorStatus.STATUS_WAITING,
 }
 

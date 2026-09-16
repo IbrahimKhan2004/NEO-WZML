@@ -30,6 +30,10 @@ from web.advanced_merge_store import (
     get_merge_data,
     save_groups as save_merge_groups,
 )
+from web.sync_streams_store import (
+    get_sync_data,
+    save_delays as save_sync_delays,
+)
 from web.mega_selection_store import (
     get_file_list as get_mega_file_list,
     update_selected_ids as set_mega_selected_ids,
@@ -145,6 +149,31 @@ async def re_verify(paused, resumed, hash_id):
             return False
     LOGGER.info(f"Verified! Hash: {hash_id}")
     return True
+
+
+@app.get("/app/sync_streams", response_class=HTMLResponse)
+async def sync_streams_page(request: Request):
+    return templates.TemplateResponse(request, "sync_streams.html")
+
+
+@app.get("/app/sync_streams/files")
+async def sync_streams_files(gid: str = ""):
+    data = await to_thread(get_sync_data, gid)
+    if data is None:
+        return JSONResponse({"error": "Task not found or expired"}, status_code=404)
+    return JSONResponse(data)
+
+
+@app.post("/app/sync_streams/submit")
+async def sync_streams_submit(request: Request, gid: str = ""):
+    try:
+        delays = (await request.json()).get("delays", {})
+    except Exception:
+        delays = {}
+    if not isinstance(delays, dict):
+        return JSONResponse({"success": False, "error": "Invalid delay format."})
+    ok = await to_thread(save_sync_delays, gid, delays)
+    return JSONResponse({"success": ok, "error": "Could not save sync configuration." if not ok else ""})
 
 
 @app.get("/app/merge", response_class=HTMLResponse)

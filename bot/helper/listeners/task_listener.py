@@ -355,6 +355,15 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
+        if self.sync_streams:
+            up_path = await self.proceed_sync_streams(up_path, gid)
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
         if self.vt_convert_audio:
             up_path = await self.proceed_convert_audio(up_path, gid)
             if self.is_cancelled:

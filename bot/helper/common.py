@@ -175,6 +175,7 @@ class TaskConfig:
         self.remove_stream = False
         self.audio_swap = False
         self.subtitle_swap = False
+        self.sync_streams = False
         self.vt_convert_audio = ""
         self.vt_audio_bitrate = ""
         self.private_link = False
@@ -1427,6 +1428,107 @@ class TaskConfig:
                 if output:
                     await remove(f_path)
                     await move(output, f_path)
+        return dl_path
+
+    async def proceed_sync_streams(self, dl_path, gid):
+        from bot.modules.sync_streams import get_sync_streams_config
+        from bot.helper.mirror_leech_utils.status_utils.merge_status import SyncStreamsProcessingStatus
+
+        delays = await get_sync_streams_config(self, dl_path)
+        if self.is_cancelled:
+            return dl_path
+        if not delays:
+            return dl_path
+
+        parent_dir = ospath.dirname(dl_path)
+
+        # Build map of targets
+        targets = []
+        for rel_path, track_delays in delays.items():
+            abs_path = ospath.join(parent_dir, rel_path)
+            if await aiopath.isfile(abs_path) and track_delays:
+                # filter non-zero
+                valid_syncs = {str(tid): float(d) for tid, d in track_delays.items() if float(d) != 0}
+                if valid_syncs:
+                    targets.append((abs_path, valid_syncs))
+
+        if not targets:
+            return dl_path
+
+        class SyncProgressObj:
+            def __init__(self):
+                self.processed_bytes = 0
+
+        sync_obj = SyncProgressObj()
+        total_targets = len(targets)
+
+        async with task_dict_lock:
+            task_dict[self.mid] = SyncStreamsProcessingStatus(self, sync_obj, gid, 1, total_targets)
+
+        self.progress = False
+        async with cpu_eater_lock:
+            self.progress = True
+            for idx, (f_path, sync_map) in enumerate(targets, start=1):
+                if self.is_cancelled:
+                    return False
+                self.proceed_count += 1
+                self.subname = ospath.basename(f_path)
+                self.subsize = await get_path_size(f_path)
+
+                async with task_dict_lock:
+                    task_dict[self.mid] = SyncStreamsProcessingStatus(self, sync_obj, gid, idx, total_targets)
+
+                base_name, ext = ospath.splitext(f_path)
+                out_path = f"{base_name}.synced{ext}"
+
+                sync_args = []
+                for tid, delay_ms in sync_map.items():
+                    sync_args.extend(["--sync", f"{tid}:{int(delay_ms)}"])
+
+                cmd = ["mkvmerge", "-o", out_path, *sync_args, f_path]
+
+                self.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+
+                # Monitor mkvmerge progress
+                while not (self.subproc.returncode is not None or self.is_cancelled or self.subproc.stdout.at_eof()):
+                    try:
+                        line = await wait_for(self.subproc.stdout.readline(), 60)
+                    except Exception:
+                        break
+                    if not line:
+                        if self.subproc.stdout.at_eof():
+                            break
+                        continue
+                    line_str = line.decode().strip()
+                    if "Progress:" in line_str:
+                        with suppress(Exception):
+                            pct = float(line_str.split("Progress:")[1].split("%")[0].strip())
+                            overall_pct = ((idx - 1) + (pct / 100.0)) / total_targets
+                            sync_obj.processed_bytes = int(self.size * overall_pct)
+                    await sleep(0.05)
+
+                _, stderr = await self.subproc.communicate()
+                code = self.subproc.returncode
+
+                if self.is_cancelled:
+                    if await aiopath.exists(out_path):
+                        await remove(out_path)
+                    return False
+
+                if code in [0, 1]:  # mkvmerge 0=ok, 1=warnings
+                    await move(out_path, f_path)
+                    LOGGER.info(f"Sync streams completed for: {f_path}")
+                else:
+                    try:
+                        err = stderr.decode().strip()
+                    except Exception:
+                        err = "Unknown error"
+                    LOGGER.error(f"mkvmerge sync failed for {f_path}: {err}")
+                    if await aiopath.exists(out_path):
+                        await remove(out_path)
+
+                sync_obj.processed_bytes = int(self.size * (idx / total_targets))
+
         return dl_path
 
     async def proceed_subtitle_swap(self, dl_path, gid):
