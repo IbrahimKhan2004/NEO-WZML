@@ -1,7 +1,7 @@
 # This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
 
 import re
-from asyncio import create_subprocess_exec, gather, sleep
+from asyncio import create_subprocess_exec, create_task, gather, sleep
 from subprocess import PIPE
 from contextlib import suppress
 from os import path as ospath, walk
@@ -1494,17 +1494,22 @@ class TaskConfig:
 
                 self.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
 
-                # Drain ffmpeg output (progress % isn't available without re-probing duration)
-                while not (self.subproc.returncode is not None or self.is_cancelled or self.subproc.stderr.at_eof()):
-                    try:
-                        line = await wait_for(self.subproc.stderr.readline(), 60)
-                    except Exception:
-                        break
-                    if not line and self.subproc.stderr.at_eof():
-                        break
-                    await sleep(0.05)
+                async def _track_progress():
+                    while (
+                        self.subproc is not None
+                        and self.subproc.returncode is None
+                        and not self.is_cancelled
+                    ):
+                        with suppress(OSError):
+                            done_bytes = ospath.getsize(out_path)
+                            overall_pct = ((idx - 1) + min(done_bytes / self.subsize, 1.0)) / total_targets
+                            sync_obj.processed_bytes = int(self.size * overall_pct)
+                        await sleep(1)
 
+                progress_task = create_task(_track_progress())
                 _, stderr = await self.subproc.communicate()
+                with suppress(Exception):
+                    await progress_task
                 code = self.subproc.returncode
 
                 if self.is_cancelled:
