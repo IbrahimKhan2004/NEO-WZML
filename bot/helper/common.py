@@ -1482,30 +1482,26 @@ class TaskConfig:
                 base_name, ext = ospath.splitext(f_path)
                 out_path = f"{base_name}.synced{ext}"
 
-                sync_args = []
+                cmd = ["ffmpeg", "-hide_banner", "-y", "-i", f_path]
+                map_args = ["-map", "0"]
+                input_idx = 1
                 for tid, delay_ms in sync_map.items():
-                    sync_args.extend(["--sync", f"{tid}:{int(delay_ms)}"])
-
-                cmd = ["mkvmerge", "-o", out_path, *sync_args, f_path]
+                    map_args.extend(["-map", f"-0:{tid}"])
+                    cmd.extend(["-itsoffset", str(delay_ms / 1000.0), "-i", f_path])
+                    map_args.extend(["-map", f"{input_idx}:{tid}"])
+                    input_idx += 1
+                cmd.extend([*map_args, "-c", "copy", out_path])
 
                 self.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
 
-                # Monitor mkvmerge progress
-                while not (self.subproc.returncode is not None or self.is_cancelled or self.subproc.stdout.at_eof()):
+                # Drain ffmpeg output (progress % isn't available without re-probing duration)
+                while not (self.subproc.returncode is not None or self.is_cancelled or self.subproc.stderr.at_eof()):
                     try:
-                        line = await wait_for(self.subproc.stdout.readline(), 60)
+                        line = await wait_for(self.subproc.stderr.readline(), 60)
                     except Exception:
                         break
-                    if not line:
-                        if self.subproc.stdout.at_eof():
-                            break
-                        continue
-                    line_str = line.decode().strip()
-                    if "Progress:" in line_str:
-                        with suppress(Exception):
-                            pct = float(line_str.split("Progress:")[1].split("%")[0].strip())
-                            overall_pct = ((idx - 1) + (pct / 100.0)) / total_targets
-                            sync_obj.processed_bytes = int(self.size * overall_pct)
+                    if not line and self.subproc.stderr.at_eof():
+                        break
                     await sleep(0.05)
 
                 _, stderr = await self.subproc.communicate()
@@ -1516,7 +1512,7 @@ class TaskConfig:
                         await remove(out_path)
                     return False
 
-                if code in [0, 1]:  # mkvmerge 0=ok, 1=warnings
+                if code == 0:
                     await move(out_path, f_path)
                     LOGGER.info(f"Sync streams completed for: {f_path}")
                 else:
@@ -1524,7 +1520,7 @@ class TaskConfig:
                         err = stderr.decode().strip()
                     except Exception:
                         err = "Unknown error"
-                    LOGGER.error(f"mkvmerge sync failed for {f_path}: {err}")
+                    LOGGER.error(f"ffmpeg sync failed for {f_path}: {err}")
                     if await aiopath.exists(out_path):
                         await remove(out_path)
 
