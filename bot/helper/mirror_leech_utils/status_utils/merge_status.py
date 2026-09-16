@@ -121,7 +121,7 @@ class SyncStreamsStatus:
     def __init__(self, listener, gid):
         self.listener = listener
         self._gid = gid
-        self.engine = EngineStatus().STATUS_MKVMERGE
+        self.engine = EngineStatus().STATUS_FFMPEG
 
     def gid(self):
         return self._gid
@@ -168,7 +168,7 @@ class SyncStreamsProcessingStatus:
         self._obj = obj
         self._gid = gid
         self._start_time = time()
-        self.engine = EngineStatus().STATUS_MKVMERGE
+        self.engine = EngineStatus().STATUS_FFMPEG
         self._group = group
         self._total = total
 
