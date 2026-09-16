@@ -109,5 +109,9 @@ class AdvancedMergeStatus:
         LOGGER.info(f"Cancelling Advanced Merge Wait: {self.listener.name}")
         self.listener.is_cancelled = True
         from web.advanced_merge_store import delete_state
+        from bot.modules.advanced_merge import _pending
         delete_state(self._gid)
+        if pending := _pending.get(self._gid):
+            _, done = pending
+            done.set()
         await self.listener.on_upload_error("Advanced merge stopped by user!")
