@@ -46,6 +46,7 @@ class MirrorStatus:
     STATUS_SUBTITLE_SWAP = "Subtitle Swap"
     STATUS_EXTRACT_STREAM = "Extract Stream"
     STATUS_CONVERT_AUDIO = "Convert Audio"
+    STATUS_WAITING = "Waiting for User"
 
 
 class EngineStatus:
@@ -91,6 +92,7 @@ STATUSES = {
     "SS": MirrorStatus.STATUS_SUBTITLE_SWAP,
     "ES": MirrorStatus.STATUS_EXTRACT_STREAM,
     "CA": MirrorStatus.STATUS_CONVERT_AUDIO,
+    "WU": MirrorStatus.STATUS_WAITING,
 }
 
 
