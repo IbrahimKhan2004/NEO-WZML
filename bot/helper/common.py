@@ -1251,8 +1251,9 @@ class TaskConfig:
             return False
         base, groups = config
         merger = MergeVideos(self)
+        parent_dir = ospath.dirname(dl_path)
         for index, group in enumerate(groups, 1):
-            files = [ospath.join(base, path) for path in group["files"]]
+            files = [ospath.join(parent_dir, path) for path in group["files"]]
             async with task_dict_lock:
                 task_dict[self.mid] = MergeStatus(self, merger, gid, index, len(groups))
             self.progress = False

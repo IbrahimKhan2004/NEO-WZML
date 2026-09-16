@@ -21,11 +21,12 @@ _pending = {}
 async def get_advanced_merge_config(listener, dl_path):
     files = []
     base = dl_path if await aiopath.isdir(dl_path) else ospath.dirname(dl_path)
+    parent_dir = ospath.dirname(dl_path)
     for root, _, names in walk(base):
         for name in names:
             path = ospath.join(root, name)
             if name.lower().endswith(VIDEO_EXTS) and await aiopath.isfile(path):
-                files.append({"path": ospath.relpath(path, base), "size": ospath.getsize(path)})
+                files.append({"path": ospath.relpath(path, parent_dir), "size": ospath.getsize(path)})
     from natsort import natsorted
 
     files = natsorted(files, key=lambda f: f["path"])
