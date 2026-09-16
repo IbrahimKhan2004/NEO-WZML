@@ -71,6 +71,8 @@ async def get_advanced_merge_config(listener, dl_path):
         async with task_dict_lock:
             task_dict.pop(listener.mid, None)
         await delete_message(msg)
+    if listener.is_cancelled:
+        return None
     groups = get_groups(gid)
     delete_state(gid)
     return base, groups
