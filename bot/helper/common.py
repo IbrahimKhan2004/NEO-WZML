@@ -1490,7 +1490,7 @@ class TaskConfig:
                     cmd.extend(["-itsoffset", str(delay_ms / 1000.0), "-i", f_path])
                     map_args.extend(["-map", f"{input_idx}:{tid}"])
                     input_idx += 1
-                cmd.extend([*map_args, "-c", "copy", out_path])
+                cmd.extend([*map_args, "-c", "copy", "-avoid_negative_ts", "make_zero", out_path])
 
                 self.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
 
