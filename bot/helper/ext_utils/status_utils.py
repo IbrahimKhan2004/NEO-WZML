@@ -62,7 +62,6 @@ class EngineStatus:
         self.STATUS_TERABOX = f"teraboxSDK v{ver.get('terabox', '1.0.0')}"
         self.STATUS_YTDLP = f"yt-dlp v{ver.get('yt-dlp', 'N/A')}"
         self.STATUS_FFMPEG = f"ffmpeg v{ver.get('ffmpeg', 'N/A')}"
-        self.STATUS_MKVMERGE = f"MKVMerge v{ver.get('mkvmerge', '97.0')}"
         self.STATUS_7Z = f"7z v{ver.get('7z', 'N/A')}"
         self.STATUS_RCLONE = f"RClone v{ver.get('rclone', 'N/A')}"
         self.STATUS_QUEUE = "QSystem v2"
