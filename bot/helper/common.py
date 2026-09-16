@@ -1235,6 +1235,8 @@ class TaskConfig:
             self.name = ospath.basename(result)
             return result
         if merger.error:
+            if self.is_cancelled:
+                return False
             self.is_cancelled = True
             await self.on_upload_error(merger.error)
             return False
