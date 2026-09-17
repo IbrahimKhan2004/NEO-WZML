@@ -301,8 +301,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_merge(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -323,8 +327,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_merge(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -341,8 +349,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_remove_stream(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -350,8 +362,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_stream_swap(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -359,8 +375,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_sync_streams(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -368,8 +388,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_convert_audio(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -377,8 +401,12 @@ class TaskListener(TaskConfig):
             up_path = await self.proceed_extract_stream(up_path, gid)
             if self.is_cancelled:
                 return
+            if await aiopath.isfile(up_path):
+                pdir = ospath.dirname(up_path)
+                if pdir != up_dir and await aiopath.isdir(pdir):
+                    up_path = pdir
             self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
@@ -545,7 +573,7 @@ class TaskListener(TaskConfig):
                 return
             self.clear()
 
-        self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+        self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
         self.size = await get_path_size(up_dir)
 
         if self.is_leech and not self.compress:
