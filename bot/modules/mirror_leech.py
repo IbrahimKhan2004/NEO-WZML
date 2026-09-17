@@ -184,7 +184,7 @@ class Mirror(TaskListener):
                 )
                 vt_key = (
                     (self.user_id, args["-m"])
-                    if args["-m"] and int(args.get("-i", 0)) > 1
+                    if args["-m"] and (int(args.get("-i", 0)) > 1 or self.multi_tag)
                     else None
                 )
                 if vt_key and vt_key in vt_multi_settings:
