@@ -65,6 +65,11 @@ from bot.helper.telegram_helper.message_utils import (
 )
 
 
+# Remembers the -vt selection for an in-progress -i/-m multi batch, keyed by
+# (user_id, folder name), so the menu is only asked once per batch, not once per file.
+vt_multi_settings = {}
+
+
 class Mirror(TaskListener):
     def __init__(
         self,
@@ -172,9 +177,27 @@ class Mirror(TaskListener):
                     self.message, "Video Tools (-vt) is restricted to Sudo Users and the Owner only!"
                 )
             else:
-                from bot.modules.video_tool import get_video_tool_settings
+                vt_attrs = (
+                    "merge_video", "merge_name", "advanced_merge", "extract_stream",
+                    "remove_stream", "audio_swap", "subtitle_swap", "sync_streams",
+                    "vt_convert_audio", "vt_audio_bitrate",
+                )
+                vt_key = (
+                    (self.user_id, args["-m"])
+                    if args["-m"] and int(args.get("-i", 0)) > 1
+                    else None
+                )
+                if vt_key and vt_key in vt_multi_settings:
+                    for attr, val in vt_multi_settings[vt_key].items():
+                        setattr(self, attr, val)
+                else:
+                    from bot.modules.video_tool import get_video_tool_settings
 
-                await get_video_tool_settings(self)
+                    await get_video_tool_settings(self)
+                    if vt_key:
+                        vt_multi_settings[vt_key] = {attr: getattr(self, attr) for attr in vt_attrs}
+                if vt_key and int(args.get("-i", 0)) <= 1:
+                    vt_multi_settings.pop(vt_key, None)
                 if self.merge_video:
                     self.merge_after_extract = True
 
