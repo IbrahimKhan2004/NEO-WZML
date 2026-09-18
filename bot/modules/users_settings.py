@@ -1240,6 +1240,7 @@ async def set_thumb(_, message):
         return
     status_msg = await send_message(message, "⏳ Saving thumbnail...")
     await create_thumb(reply_to, user_id)
+    await delete_message(reply_to)
     update_user_ldata(user_id, "THUMBNAIL", f"thumbnails/{user_id}.jpg")
     await database.update_user_data(user_id)
     await edit_message(status_msg, "Thumbnail Saved ✅")
