@@ -1236,7 +1236,14 @@ async def set_thumb(_, message):
     user_id = message.from_user.id
     reply_to = message.reply_to_message
     if not reply_to or not reply_to.photo:
-        await send_message(message, "Reply to any photo to save as your Thumbnail.")
+        thumb_path = f"thumbnails/{user_id}.jpg"
+        if await aiopath.exists(thumb_path):
+            await remove(thumb_path)
+            del user_data[user_id]["THUMBNAIL"]
+            await database.update_user_doc(user_id, "THUMBNAIL")
+            await send_message(message, "Thumbnail Removed ✅")
+        else:
+            await send_message(message, "Reply to any photo to save as your Thumbnail.")
         return
     status_msg = await send_message(message, "⏳ Saving thumbnail...")
     await create_thumb(reply_to, user_id)
