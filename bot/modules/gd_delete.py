@@ -1,4 +1,4 @@
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from bot import LOGGER
 from bot.helper.ext_utils.bot_utils import sync_to_async, new_task

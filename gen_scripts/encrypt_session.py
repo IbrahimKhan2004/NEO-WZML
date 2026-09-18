@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 import base64
 from secrets import token_urlsafe

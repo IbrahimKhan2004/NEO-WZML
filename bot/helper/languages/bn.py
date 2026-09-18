@@ -1,4 +1,4 @@
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 START_MSG = """
 এই বট লিংক | টেলিগ্রাম ফাইল | টরেন্ট | Rclone-ক্লাউড থেকে যেকোনো Rclone ক্লাউড, গুগল ড্রাইভ বা টেলিগ্রামে মিরর করতে পারে।

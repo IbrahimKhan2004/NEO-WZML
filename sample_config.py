@@ -1,4 +1,4 @@
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 #
 # Copy to `config.py` and fill in your values. `config.py` is git-ignored.
 # BOT_TOKEN, TELEGRAM_API, TELEGRAM_HASH, OWNER_ID, DATABASE_URL, BASE_URL,

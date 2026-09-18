@@ -1,4 +1,4 @@
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from bot.core.config_manager import Config
 

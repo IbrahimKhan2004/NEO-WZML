@@ -1,4 +1,4 @@
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from .bot_settings import send_bot_settings, edit_bot_settings
 from .cancel_task import cancel, cancel_multi, cancel_all_buttons, cancel_all_update

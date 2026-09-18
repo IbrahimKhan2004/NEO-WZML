@@ -1,4 +1,4 @@
-# This file is a part of NEO-WZML (github.com/irisXDR/NEO-WZML)
+# This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from bot.helper.ext_utils.bot_utils import COMMAND_USAGE, new_task
 from bot.helper.ext_utils.help_messages import (
