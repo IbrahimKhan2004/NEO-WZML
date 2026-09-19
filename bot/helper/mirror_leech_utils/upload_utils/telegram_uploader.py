@@ -1,6 +1,6 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
-from asyncio import sleep
+from asyncio import sleep, ensure_future, CancelledError
 from logging import getLogger
 from os import path as ospath, walk
 from re import match as re_match, sub as re_sub
@@ -55,6 +55,7 @@ class TelegramUploader:
         self._listener = listener
         self._path = path
         self._client = None
+        self._send_task = None
         self._upload_chat_id = 0
         self._reply_to_id = 0
         self._start_time = time()
@@ -563,7 +564,7 @@ class TelegramUploader:
                     ):
                         self._msgs_dict[self._sent_msg.link] = file_
                     await sleep(1)
-                except CancelledUpload:
+                except (CancelledUpload, CancelledError):
                     return
                 except Exception as err:
                     LOGGER.error(f"{err}. Path: {self._up_path}", exc_info=True)
@@ -626,7 +627,8 @@ class TelegramUploader:
             self._last_uploaded = 0
 
             try:
-                result = await send_method(**kwargs)
+                self._send_task = ensure_future(send_method(**kwargs))
+                result = await self._send_task
                 if result:
                     return result
                 if attempt < 2:
@@ -937,5 +939,7 @@ class TelegramUploader:
 
     async def cancel_task(self):
         self._listener.is_cancelled = True
+        if self._send_task:
+            self._send_task.cancel()
         await self._cleanup_auto_thumb()
         await self._listener.on_upload_error("your upload has been stopped!")
