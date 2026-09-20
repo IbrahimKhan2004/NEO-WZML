@@ -235,6 +235,7 @@ class StorageToUpload:
             if collection_id:
                 link = f"https://storage.to/c/{collection_id}"
                 mime_type = "Folder"
+                self.total_folders = 1
             else:
                 raise ValueError("Failed to upload folder to StorageTo")
         else:
