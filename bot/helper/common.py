@@ -480,6 +480,8 @@ class TaskConfig:
                             or Config.PIXELDRAIN_KEY
                         ):
                             raise ValueError("No PixelDrain Key Found!")
+                    elif service == "storageto":
+                        pass
                 self.up_dest = "Uphoster"
 
             if not self.up_dest:
