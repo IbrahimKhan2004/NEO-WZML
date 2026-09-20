@@ -42,6 +42,7 @@ class Config:
     PIXELDRAIN_KEY = ""
     PROTECTED_API = ""
     BUZZHEAVIER_API = ""
+    STORAGETO_TOKEN = ""
     GDRIVE_ID = ""
     GD_DESP = "Uploaded with NEO-WZML"
     AUTHOR_NAME = "irisXDR"
