@@ -9,7 +9,7 @@ from pathlib import Path
 
 from aiofiles.os import path as aiopath
 from aiofiles.os import rename as aiorename
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from tenacity import (
     RetryError,
     retry,
@@ -22,6 +22,7 @@ from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import SetInterval, sync_to_async
 
 LOGGER = getLogger(__name__)
+UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 
 class ProgressFileReader(BufferedReader):
@@ -86,7 +87,7 @@ class BuzzHeavierUpload:
         if not token:
             return False
         async with (
-            ClientSession() as session,
+            ClientSession(timeout=UPLOAD_TIMEOUT) as session,
             session.get(
                 "https://buzzheavier.com/api/account",
                 headers={"Authorization": f"Bearer {token}"},
@@ -128,7 +129,7 @@ class BuzzHeavierUpload:
         if self.token is None:
             raise Exception("BuzzHeavier API token not found!")
 
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.get(
                 f"{self.api_url}account",
                 headers={"Authorization": f"Bearer {self.token}"},
@@ -175,7 +176,7 @@ class BuzzHeavierUpload:
         with ProgressFileReader(
             filename=file_path, read_callback=self.__progress_callback
         ) as file:
-            async with ClientSession() as session:
+            async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
                 async with session.put(url, data=file, headers=headers) as resp:
                     if resp.status in [200, 201]:
                         return await self.__resp_handler(await resp.text())
@@ -193,7 +194,7 @@ class BuzzHeavierUpload:
                 raise Exception("Could not determine Root Directory ID.")
 
         url = f"{self.api_url}fs/{parentFolderId}"
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.post(
                 url=url,
                 json={"name": folderName},
