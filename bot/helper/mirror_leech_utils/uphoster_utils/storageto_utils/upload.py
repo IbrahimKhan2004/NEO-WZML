@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from aiofiles.os import path as aiopath
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from tenacity import (
     RetryError,
     retry,
@@ -22,6 +22,7 @@ from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import SetInterval, sync_to_async
 
 LOGGER = getLogger(__name__)
+UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 
 class ProgressFileReader(BufferedReader):
@@ -94,7 +95,7 @@ class StorageToUpload:
         retry=retry_if_exception_type(Exception),
     )
     async def __put_part(self, url, data):
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.put(url, data=data) as resp:
                 if resp.status not in [200, 201]:
                     raise Exception(f"HTTP {resp.status}: {await resp.text()}")
@@ -108,7 +109,7 @@ class StorageToUpload:
         size = await aiopath.getsize(path)
         content_type = guess_type(file_name)[0] or "application/octet-stream"
 
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.post(
                 f"{self.api_url}upload/init",
                 json={"filename": file_name, "content_type": content_type, "size": size},
@@ -133,7 +134,7 @@ class StorageToUpload:
                         break
                     url = urls.get(str(part_no))
                     if not url:
-                        async with ClientSession() as session:
+                        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
                             async with session.post(
                                 f"{self.api_url}upload/parts",
                                 json={
@@ -147,7 +148,7 @@ class StorageToUpload:
                     parts.append({"partNumber": part_no, "etag": etag})
                     part_no += 1
 
-                async with ClientSession() as session:
+                async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
                     async with session.post(
                         f"{self.api_url}upload/complete-multipart",
                         json={"upload_id": init_res["upload_id"], "parts": parts},
@@ -167,7 +168,7 @@ class StorageToUpload:
         if collection_id:
             confirm_body["collection_id"] = collection_id
 
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.post(
                 f"{self.api_url}upload/confirm",
                 json=confirm_body,
@@ -186,7 +187,7 @@ class StorageToUpload:
         if not file_list:
             raise Exception("No files found in folder.")
 
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.post(
                 f"{self.api_url}collection",
                 json={"expected_file_count": len(file_list)},
