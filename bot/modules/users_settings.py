@@ -56,6 +56,7 @@ uphoster_options = [
     "BUZZHEAVIER_TOKEN",
     "BUZZHEAVIER_FOLDER_ID",
     "PIXELDRAIN_KEY",
+    "STORAGETO_TOKEN",
 ]
 rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL", "USER_TDS"]
@@ -116,6 +117,7 @@ fname_dict = {
     "BUZZHEAVIER_TOKEN": "BuzzHeavier Token",
     "BUZZHEAVIER_FOLDER_ID": "BuzzHeavier Folder",
     "PIXELDRAIN_KEY": "PixelDrain Key",
+    "STORAGETO_TOKEN": "StorageTo Token",
 }
 
 user_settings_text = {
@@ -420,6 +422,16 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 <b>Get it from:</b> https://pixeldrain.com/user/api_keys
  • <b>Time Left:</b> <code>60 sec</code>""",
     ),
+    "STORAGETO_TOKEN": (
+        "String",
+        "StorageTo API Token for account authentication. Optional.",
+        """<i>Send your StorageTo API Token.</i>
+<b>Get it from:</b> https://storage.to/account/api-tokens
+(Sign in first, then generate a token — it's shown only once, so copy it immediately)
+
+<i>Note: Token is optional. Without it, uploads still work anonymously (50 files/day, files expire in 3 days). With token: unlimited files + no daily bandwidth cap.</i>
+ • <b>Time Left:</b> <code>60 sec</code>""",
+    ),
     "DEFAULT_UPLOAD": (
         "Selection",
         "Set your default upload destination. Overrides bot's default setting.",
@@ -567,12 +579,13 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 • <b>gofile</b> - Gofile.com
 • <b>buzzheavier</b> - BuzzHeavier.com
 • <b>pixeldrain</b> - PixelDrain.com
+• <b>storageto</b> - StorageTo.com
 
 <b>Format:</b> Comma-separated service names
 <b>Examples:</b>
 • <code>gofile</code> - Only Gofile
 • <code>gofile,buzzheavier</code> - Both Gofile and BuzzHeavier
-• <code>gofile,buzzheavier,pixeldrain</code> - All three
+• <code>gofile,buzzheavier,pixeldrain,storageto</code> - All four
 
 <b>Instructions:</b>
 1. Send service names separated by comma
@@ -847,6 +860,7 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button("Gofile Tools", f"userset {user_id} gofile")
         buttons.data_button("BuzzHeavier Tools", f"userset {user_id} buzzheavier")
         buttons.data_button("PixelDrain Tools", f"userset {user_id} pixeldrain")
+        buttons.data_button("StorageTo Tools", f"userset {user_id} storageto")
         buttons.data_button("Back", f"userset {user_id} back", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
         btns = buttons.build_menu(1)
@@ -871,6 +885,24 @@ async def get_user_settings(from_user, stype="main"):
             pdtoken = "None"
 
         text = f""" • <b>PixelDrain Key:</b> <code>{pdtoken}</code>"""
+
+    elif stype == "storageto":
+        buttons.data_button("StorageTo Token", f"userset {user_id} menu STORAGETO_TOKEN")
+        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("Close", f"userset {user_id} close", "footer")
+        btns = buttons.build_menu(1)
+
+        if user_dict.get("STORAGETO_TOKEN", False):
+            sttoken = user_dict["STORAGETO_TOKEN"]
+            st_status = "Unlimited uploads"
+        elif Config.STORAGETO_TOKEN:
+            sttoken = Config.STORAGETO_TOKEN
+            st_status = "Unlimited uploads"
+        else:
+            sttoken = "None"
+            st_status = "Anonymous — 50 files/day limit"
+
+        text = f""" • <b>StorageTo Token:</b> <code>{sttoken}</code> ({st_status})"""
 
     elif stype == "buzzheavier":
         buttons.data_button(
@@ -1664,6 +1696,7 @@ async def edit_user_settings(client, query):
         "gofile",
         "buzzheavier",
         "pixeldrain",
+        "storageto",
         "ffset",
         "advanced",
         "gdrive",
@@ -1698,7 +1731,7 @@ async def edit_user_settings(client, query):
             )
 
         buttons = ButtonMaker()
-        for service in ["gofile", "buzzheavier", "pixeldrain"]:
+        for service in ["gofile", "buzzheavier", "pixeldrain", "storageto"]:
             state = "✓" if service in selected_services else ""
             buttons.data_button(
                 f"{service.capitalize()} {state}",
