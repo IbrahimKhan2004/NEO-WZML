@@ -46,7 +46,7 @@
 NEO-WZML is built for people who move a lot of files through Telegram and cloud storage. It combines the classic mirror/leech workflow with modern file selection, persistent user settings, strong queue controls, and practical media tools.
 
 - 🔌 **One bot, many sources:** direct links, torrents, Mega, TeraBox, Google Drive, JDownloader, yt-dlp, Telegram messages, and rclone remotes.
-- 🎯 **Multiple upload targets:** Telegram leech, Google Drive, TeraBox, rclone remotes, GoFile, BuzzHeavier, and PixelDrain.
+- 🎯 **Multiple upload targets:** Telegram leech, Google Drive, TeraBox, rclone remotes, GoFile, BuzzHeavier, PixelDrain, and StorageTo.
 - 🌐 **Web file selection:** pick torrent files, Mega folder files, rclone folder files, and TeraBox account files before downloading.
 - 🎬 **Media-ready:** split, convert, merge videos, sample videos, screenshots, metadata, thumbnails, and custom FFmpeg pipelines.
 - 🗜️ **Archive workflow:** extract, password-protected ZIPs, image-only ZIPs, split archive handling, and 7z-backed progress.
@@ -79,7 +79,7 @@ NEO-WZML is built for people who move a lot of files through Telegram and cloud 
 | Google Drive | OAuth, service accounts, Team Drives, duplicate checks, and index links |
 | TeraBox | Upload to your TeraBox account via cookie auth (`-up tbx`), with optional folder path |
 | rclone | Upload to any configured remote, including user configs via `mrcc:` |
-| DDL hosts | Upload to GoFile, BuzzHeavier, PixelDrain, or multiple hosts |
+| DDL hosts | Upload to GoFile, BuzzHeavier, PixelDrain, StorageTo, or multiple hosts |
 
 ### 🎛️ Processing Tools
 
