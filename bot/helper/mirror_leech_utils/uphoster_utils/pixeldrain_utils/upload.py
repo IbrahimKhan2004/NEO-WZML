@@ -182,7 +182,7 @@ class PixelDrainUpload:
                 LOGGER.info(f"Total Attempts: {err.last_attempt.attempt_number}")
                 err = err.last_attempt.exception()
             
-            err_str = str(err)
+            err_str = str(err) or type(err).__name__
             if any(x in err_str.lower() for x in [
                 "name resolution",
                 "getaddrinfo failed",
