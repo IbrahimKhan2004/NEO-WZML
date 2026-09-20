@@ -1,12 +1,15 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from pyrogram import Client, enums
+import pyrogram.methods.advanced.save_file as _sf
 from asyncio import Lock, gather
 from inspect import signature
 from cryptography.fernet import Fernet, InvalidToken
 
 from bot import LOGGER, bot_cache
 from bot.core.config_manager import Config
+
+_sf.POOL_SIZE = 8
 
 
 class TgClient:
