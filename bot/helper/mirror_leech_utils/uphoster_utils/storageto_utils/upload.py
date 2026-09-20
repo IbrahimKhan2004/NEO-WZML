@@ -105,7 +105,7 @@ class StorageToUpload:
             return None
 
         file_name = ospath.basename(path).replace(" ", ".")[:255]
-        size = (await aiopath.stat(path)).st_size
+        size = await aiopath.getsize(path)
         content_type = guess_type(file_name)[0] or "application/octet-stream"
 
         async with ClientSession() as session:
