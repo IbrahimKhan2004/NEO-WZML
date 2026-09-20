@@ -9,7 +9,7 @@ from pathlib import Path
 from random import choice
 
 from aiofiles.os import path as aiopath
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ContentTypeError
 from tenacity import (
     RetryError,
@@ -23,6 +23,7 @@ from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import SetInterval, sync_to_async
 
 LOGGER = getLogger(__name__)
+UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 
 class ProgressFileReader(BufferedReader):
@@ -87,7 +88,7 @@ class GoFileUpload:
 
         headers = {"Authorization": f"Bearer {token}"}
         async with (
-            ClientSession() as session,
+            ClientSession(timeout=UPLOAD_TIMEOUT) as session,
             session.get(
                 "https://api.gofile.io/accounts/website", headers=headers
             ) as resp,
@@ -123,7 +124,7 @@ class GoFileUpload:
         return fid
 
     async def __getServer(self):
-        async with ClientSession() as session:
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
             async with session.get(f"{self.api_url}servers") as resp:
                 res = await resp.json()
                 data = res.get("data", {})
@@ -139,7 +140,7 @@ class GoFileUpload:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         async with (
-            ClientSession() as session,
+            ClientSession(timeout=UPLOAD_TIMEOUT) as session,
             session.get(f"{self.api_url}accounts/website", headers=headers) as resp,
         ):
             res = await resp.json()
@@ -163,7 +164,7 @@ class GoFileUpload:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         async with (
-            ClientSession() as session,
+            ClientSession(timeout=UPLOAD_TIMEOUT) as session,
             session.put(
                 url=f"{self.api_url}contents/{contentId}/update",
                 json={
@@ -193,7 +194,7 @@ class GoFileUpload:
             upload_filename = target_filename or ospath.basename(file_path)
             form.add_field(req_file, file, filename=upload_filename)
             
-            async with ClientSession() as session:
+            async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
                 async with session.post(url, data=form) as resp:
                     if resp.status == 200:
                         try:
@@ -218,7 +219,7 @@ class GoFileUpload:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         async with (
-            ClientSession() as session,
+            ClientSession(timeout=UPLOAD_TIMEOUT) as session,
             session.post(
                 url=f"{self.api_url}contents/createfolder",
                 json={
