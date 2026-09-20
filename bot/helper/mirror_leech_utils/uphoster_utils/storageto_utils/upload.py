@@ -214,7 +214,7 @@ class StorageToUpload:
             if isinstance(err, RetryError):
                 LOGGER.info(f"Total Attempts: {err.last_attempt.attempt_number}")
                 err = err.last_attempt.exception()
-            err = str(err).replace(">", "").replace("<", "")
+            err = str(err).replace(">", "").replace("<", "") or type(err).__name__
             LOGGER.error(err)
             await self.listener.on_upload_error(err)
             self._is_errored = True
