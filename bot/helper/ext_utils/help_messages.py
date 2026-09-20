@@ -924,7 +924,7 @@ def get_help_string(user_id=None, is_sudo=False):
             "examples": ["/ytdlleech https://youtube.com/watch?v=..."],
         },
         "UpHoster": {
-            "desc": "Upload files to DDL hosting services (Gofile, PixelDrain, BuzzHeavier)",
+            "desc": "Upload files to DDL hosting services (Gofile, PixelDrain, BuzzHeavier, StorageTo)",
             "usage": "/uphoster <link> or reply to a file",
             "examples": ["/uphoster https://example.com/file.zip"],
         },
@@ -1235,6 +1235,7 @@ config_descriptions = {
     "GOFILE_FOLDER_ID": "Gofile folder ID to organize uploads. Leave empty for root",
     "PIXELDRAIN_KEY": "PixelDrain API key for file uploads",
     "BUZZHEAVIER_API": "BuzzHeavier account ID (API token) for uploads",
+    "STORAGETO_TOKEN": "StorageTo API token for uploads. Optional — anonymous uploads work without it",
     "STREAMWISH_API": "StreamWish API key for video hosting uploads",
 
     "BASE_URL": "Public URL where bot web server is accessible. Used for torrent file selection UI",
