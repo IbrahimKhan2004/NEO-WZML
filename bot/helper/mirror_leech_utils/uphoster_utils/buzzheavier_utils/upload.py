@@ -6,6 +6,7 @@ from logging import getLogger
 from os import path as ospath
 from os import walk as oswalk
 from pathlib import Path
+from uuid import uuid4
 
 from aiofiles.os import path as aiopath
 from aiofiles.os import rename as aiorename
@@ -202,6 +203,8 @@ class BuzzHeavierUpload:
             ) as resp:
                 if resp.status in [200, 201]:
                     return await resp.json()
+                elif resp.status == 409:
+                    return await self.create_folder(parentFolderId, f"{folderName}_{uuid4().hex[:6]}")
                 else:
                     raise Exception(f"Create Folder Failed: {await resp.text()}")
 
@@ -302,7 +305,7 @@ class BuzzHeavierUpload:
             if isinstance(err, RetryError):
                 LOGGER.info(f"Total Attempts: {err.last_attempt.attempt_number}")
                 err = err.last_attempt.exception()
-            err = str(err).replace(">", "").replace("<", "")
+            err = str(err).replace(">", "").replace("<", "") or type(err).__name__
             LOGGER.error(err)
             await self.listener.on_upload_error(err)
             self._is_errored = True
