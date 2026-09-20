@@ -7,7 +7,7 @@ from os import walk as oswalk
 from pathlib import Path
 
 from aiofiles.os import path as aiopath
-from aiohttp import BasicAuth, ClientSession
+from aiohttp import BasicAuth, ClientSession, ClientTimeout
 from tenacity import (
     RetryError,
     retry,
@@ -20,6 +20,7 @@ from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import SetInterval, sync_to_async
 
 LOGGER = getLogger(__name__)
+UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 
 class ProgressFileReader(BufferedReader):
@@ -95,7 +96,7 @@ class PixelDrainUpload:
         with ProgressFileReader(
             filename=file_path, read_callback=self.__progress_callback
         ) as file:
-            async with ClientSession(auth=auth) as session:
+            async with ClientSession(auth=auth, timeout=UPLOAD_TIMEOUT) as session:
                 async with session.put(f"{url}{file_name}", data=file) as resp:
                     if resp.status in [200, 201]:
                         return await self.__resp_handler(
@@ -114,7 +115,7 @@ class PixelDrainUpload:
 
         data = {"title": title, "files": files, "anonymous": False}
         auth = BasicAuth("", self.token)
-        async with ClientSession(auth=auth) as session:
+        async with ClientSession(auth=auth, timeout=UPLOAD_TIMEOUT) as session:
             async with session.post(f"{self.api_url}list", json=data) as resp:
                 if resp.status == 200:
                     res = await resp.json(content_type=None)
