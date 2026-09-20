@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from bot import LOGGER, bot_cache
 from bot.core.config_manager import Config
 
-_sf.POOL_SIZE = 8
+_sf.POOL_SIZE = 16
 
 
 class TgClient:
