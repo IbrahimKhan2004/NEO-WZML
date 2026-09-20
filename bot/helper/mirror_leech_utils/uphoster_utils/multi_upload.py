@@ -17,6 +17,9 @@ from bot.helper.mirror_leech_utils.uphoster_utils.buzzheavier_utils.upload impor
 from bot.helper.mirror_leech_utils.uphoster_utils.pixeldrain_utils.upload import (
     PixelDrainUpload,
 )
+from bot.helper.mirror_leech_utils.uphoster_utils.storageto_utils.upload import (
+    StorageToUpload,
+)
 
 LOGGER = getLogger(__name__)
 
@@ -81,6 +84,10 @@ class MultiUphosterUpload:
                 self.uploaders.append(
                     PixelDrainUpload(ProxyListener(self, "pixeldrain"), path)
                 )
+            elif service == "storageto":
+                self.uploaders.append(
+                    StorageToUpload(ProxyListener(self, "storageto"), path)
+                )
 
     @property
     def speed(self):
@@ -113,6 +120,10 @@ class MultiUphosterUpload:
                 elif service == "pixeldrain":
                     self.uploaders.append(
                         PixelDrainUpload(ProxyListener(self, "pixeldrain"), self.path)
+                    )
+                elif service == "storageto":
+                    self.uploaders.append(
+                        StorageToUpload(ProxyListener(self, "storageto"), self.path)
                     )
 
         tasks = [u.upload() for u in self.uploaders]
