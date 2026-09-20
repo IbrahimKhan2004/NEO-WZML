@@ -53,6 +53,9 @@ from bot.helper.mirror_leech_utils.uphoster_utils.buzzheavier_utils.upload impor
 from bot.helper.mirror_leech_utils.uphoster_utils.pixeldrain_utils.upload import (
     PixelDrainUpload,
 )
+from bot.helper.mirror_leech_utils.uphoster_utils.storageto_utils.upload import (
+    StorageToUpload,
+)
 from bot.helper.mirror_leech_utils.uphoster_utils.multi_upload import MultiUphosterUpload
 from bot.helper.mirror_leech_utils.gdrive_utils.upload import GoogleDriveUpload
 from bot.helper.mirror_leech_utils.rclone_utils.transfer import RcloneTransferHelper
