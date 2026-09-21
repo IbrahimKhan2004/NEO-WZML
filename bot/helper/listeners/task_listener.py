@@ -361,6 +361,15 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
+        if self.add_streams:
+            up_path = await self.proceed_add_streams(up_path, gid)
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
         if self.audio_swap or self.subtitle_swap:
             up_path = await self.proceed_stream_swap(up_path, gid)
             if self.is_cancelled:
