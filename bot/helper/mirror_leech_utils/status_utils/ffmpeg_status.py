@@ -55,6 +55,8 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_SUBTITLE_SWAP
         elif self._cstatus == "Convert Audio":
             return MirrorStatus.STATUS_CONVERT_AUDIO
+        elif self._cstatus == "Add Streams":
+            return MirrorStatus.STATUS_ADD_STREAMS
         else:
             return MirrorStatus.STATUS_FFMPEG
 
