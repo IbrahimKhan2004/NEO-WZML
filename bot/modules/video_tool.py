@@ -38,6 +38,8 @@ def _vt_menu(vstate):
     buttons.data_button(f"{ss_tick}Subtitle Swap (Change Subtitle Index)", "vt ss")
     syn_tick = "✅ " if vstate["sync_streams"] else ""
     buttons.data_button(f"{syn_tick}Sync Audio/Subtitles", "vt sync")
+    aa_tick = "✅ " if vstate["add_streams"] else ""
+    buttons.data_button(f"{aa_tick}Add Audio/Subtitles", "vt aa")
     ca_tick = "✅ " if vstate["convert_audio"] else ""
     buttons.data_button(f"{ca_tick}Convert Audio", "vt ca")
     buttons.data_button("Done", "vt done")
@@ -259,6 +261,17 @@ async def edit_video_tool(client, query):
         vstate["sync_streams"] = False
         await query.answer("Sync Audio/Subtitles disabled!")
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "aa" and not vstate["add_streams"]:
+        vstate["add_streams"] = True
+        await query.answer(
+            "You will be able to configure audio/ subtitles after the download is complete",
+            show_alert=True,
+        )
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "aa" and vstate["add_streams"]:
+        vstate["add_streams"] = False
+        await query.answer("Add Audio/Subtitles disabled!")
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
     elif action == "ca":
         await query.answer()
         vstate["stage"] = "ca_menu"
@@ -326,6 +339,7 @@ async def edit_video_tool(client, query):
         vstate["audio_swap"] = False
         vstate["subtitle_swap"] = False
         vstate["sync_streams"] = False
+        vstate["add_streams"] = False
         vstate["convert_audio"] = False
         vstate["audio_format"] = ""
         vstate["audio_bitrate"] = ""
@@ -343,6 +357,7 @@ async def edit_video_tool(client, query):
             or vstate["audio_swap"]
             or vstate["subtitle_swap"]
             or vstate["sync_streams"]
+            or vstate["add_streams"]
             or vstate["convert_audio"]
         ):
             return await query.answer("⚠️ Select Some Mode", show_alert=True)
@@ -366,6 +381,7 @@ async def get_video_tool_settings(listener):
         "audio_swap": False,
         "subtitle_swap": False,
         "sync_streams": False,
+        "add_streams": False,
         "convert_audio": False,
         "audio_format": "",
         "audio_bitrate": "",
@@ -394,6 +410,7 @@ async def get_video_tool_settings(listener):
             vstate["audio_swap"] = False
             vstate["subtitle_swap"] = False
             vstate["sync_streams"] = False
+            vstate["add_streams"] = False
             vstate["convert_audio"] = False
             vstate["audio_format"] = ""
             vstate["audio_bitrate"] = ""
@@ -416,6 +433,7 @@ async def get_video_tool_settings(listener):
     listener.audio_swap = vstate["audio_swap"]
     listener.subtitle_swap = vstate["subtitle_swap"]
     listener.sync_streams = vstate["sync_streams"]
+    listener.add_streams = vstate["add_streams"]
     listener.vt_convert_audio = vstate["audio_format"].lower() if vstate["convert_audio"] else ""
     listener.vt_audio_bitrate = vstate["audio_bitrate"] if vstate["convert_audio"] else ""
     vt_dict.pop(mid, None)
