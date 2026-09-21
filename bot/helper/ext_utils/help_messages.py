@@ -353,7 +353,7 @@ merge_video = """<b>✦ MERGE VIDEOS</b>: <code>-mv</code>
 
 video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 
-<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Advanced Video Merge, Extract Streams, Remove Stream, Audio Swap, Subtitle Swap, Sync Audio/Subtitles, Convert Audio) before the task starts.
+<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Advanced Video Merge, Extract Streams, Remove Stream, Audio Swap, Subtitle Swap, Sync Audio/Subtitles, Add Audio/Subtitles, Convert Audio) before the task starts.
 
 <b>Options Available in Menu:</b>
 • <b>Video Merge:</b> Concatenate videos in folder order into one file.
@@ -363,6 +363,7 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 • <b>Audio Swap:</b> Re-order audio streams interactively by selection sequence (stream copy, no re-encode).
 • <b>Subtitle Swap:</b> Re-order subtitle streams interactively by selection sequence (stream copy, no re-encode).
 • <b>Sync Audio/Subtitles:</b> Synchronize audio/subtitle tracks by specifying time delay in milliseconds in the Web UI after download completes.
+• <b>Add Audio/Subtitles:</b> Mux external audio/subtitle files (from the same folder, e.g. <code>-i 2 -m folder</code>) into a base video by stream copy. Configure groups, language, title, default track and output name in the Web UI after download completes. Output is always MKV.
 • <b>Convert Audio:</b> Convert audio files to a chosen format (AAC, MP3, FLAC, OPUS, AC3, WAV) with an optional bitrate (40k-320k, or Original). Bitrate selection is disabled for FLAC since it's lossless. Works alongside single leech, unzip, zip, video merge, remove stream, audio swap, subtitle swap and extract stream tasks alike.
 
 <b>Usage:</b>
@@ -372,7 +373,7 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Video Merge and Advanced Video Merge run after extract (only one can be selected); Advanced Video Merge opens a Web UI to set groups and order. Remove Stream runs after Video Merge. Audio Swap runs after Remove Stream. Subtitle Swap runs after Audio Swap. Sync Audio/Subtitles runs after Subtitle Swap. Convert Audio runs after Sync Audio/Subtitles. Extract Streams runs after Convert Audio and before FFmpeg commands."""
+<b>Note:</b> Video Merge and Advanced Video Merge run after extract (only one can be selected); Advanced Video Merge opens a Web UI to set groups and order. Remove Stream runs after Video Merge. Add Audio/Subtitles runs after Remove Stream. Audio Swap runs after Add Audio/Subtitles. Subtitle Swap runs after Audio Swap. Sync Audio/Subtitles runs after Subtitle Swap. Convert Audio runs after Sync Audio/Subtitles. Extract Streams runs after Convert Audio and before FFmpeg commands."""
 
 subtitle_swap = """<b>✦ SUBTITLE SWAP</b> (via <code>-vt</code> menu)
 
@@ -398,7 +399,7 @@ audio_swap = """<b>✦ AUDIO SWAP</b> (via <code>-vt</code> menu)
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Streams are selectable after download completes. Runs after Remove Stream and before Convert Audio."""
+<b>Note:</b> Streams are selectable after download completes. Runs after Add Audio/Subtitles and before Convert Audio."""
 
 remove_stream = """<b>✦ REMOVE STREAM</b> (via <code>-vt</code> menu)
 
