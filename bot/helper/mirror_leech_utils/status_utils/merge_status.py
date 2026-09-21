@@ -221,3 +221,48 @@ class SyncStreamsProcessingStatus:
             except Exception:
                 pass
         await self.listener.on_upload_error("Sync audio/subtitles stopped by user!")
+
+
+class AddStreamsStatus:
+    def __init__(self, listener, gid):
+        self.listener = listener
+        self._gid = gid
+        self.engine = EngineStatus().STATUS_FFMPEG
+
+    def gid(self):
+        return self._gid
+
+    def progress(self):
+        return "0%"
+
+    def speed(self):
+        return "0B/s"
+
+    def processed_bytes(self):
+        return "0B"
+
+    def name(self):
+        return self.listener.name
+
+    def size(self):
+        return get_readable_file_size(self.listener.size)
+
+    def eta(self):
+        return "-"
+
+    def status(self):
+        return MirrorStatus.STATUS_WAITING
+
+    def task(self):
+        return self
+
+    async def cancel_task(self):
+        LOGGER.info(f"Cancelling Add Streams Wait: {self.listener.name}")
+        self.listener.is_cancelled = True
+        from web.add_streams_store import delete_state
+        from bot.modules.add_streams import _pending
+        delete_state(self._gid)
+        if pending := _pending.get(self._gid):
+            _, done = pending
+            done.set()
+        await self.listener.on_upload_error("Add audio/subtitles stopped by user!")
