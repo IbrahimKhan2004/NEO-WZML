@@ -1,6 +1,6 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
-from io import BufferedReader
+from io import BufferedReader, FileIO
 from json import loads as json_loads
 from logging import getLogger
 from os import path as ospath
@@ -9,7 +9,6 @@ from pathlib import Path
 from uuid import uuid4
 
 from aiofiles.os import path as aiopath
-from aiofiles.os import rename as aiorename
 from aiohttp import ClientSession, ClientTimeout
 from tenacity import (
     RetryError,
@@ -28,7 +27,7 @@ UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 class ProgressFileReader(BufferedReader):
     def __init__(self, filename, read_callback=None):
-        super().__init__(open(filename, "rb"))
+        super().__init__(FileIO(filename, "rb"))
         self.__read_callback = read_callback
         self.length = Path(filename).stat().st_size
 
@@ -212,11 +211,7 @@ class BuzzHeavierUpload:
         if self.listener.is_cancelled:
             return None
 
-        new_path = ospath.join(
-            ospath.dirname(path), ospath.basename(path).replace(" ", ".")
-        )
-        await aiorename(path, new_path)
-        file_name = ospath.basename(new_path)
+        file_name = ospath.basename(path).replace(" ", ".")
 
         if not parentId:
             parentId = await self.__get_root_id()
@@ -226,7 +221,7 @@ class BuzzHeavierUpload:
         else:
             url = f"{self.upload_url}{file_name}"
 
-        return await self.upload_aiohttp(url, new_path)
+        return await self.upload_aiohttp(url, path)
 
     async def _upload_dir(self, input_directory):
         parent_folder_id = self.folder_id or await self.__get_root_id()
