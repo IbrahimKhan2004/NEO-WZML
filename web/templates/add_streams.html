@@ -60,7 +60,10 @@
         @keyframes slideIn { 0% { opacity: 0; transform: translateX(-10px); } 100% { opacity: 1; transform: translateX(0); } }
         .animate-item { animation: slideIn 0.2s ease-out forwards; opacity: 0; }
         .searchable-select-container { position: relative; }
-        .searchable-select-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 9999; width: 100%; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border: 1px solid rgb(198, 198, 200); }
+        .searchable-select-container.open { z-index: 99999; }
+        .searchable-select-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 99999; width: 100%; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border: 1px solid rgb(198, 198, 200); }
+        .ios-list-item:has(.searchable-select-container.open) { z-index: 99999; position: relative; }
+        #tracks-wrapper:has(.searchable-select-container.open) { z-index: 99999; position: relative; }
         .dark .searchable-select-dropdown { border-color: rgb(56, 56, 58); }
         .searchable-select-container.open .searchable-select-dropdown { display: block; }
         .searchable-option { display: flex !important; }
