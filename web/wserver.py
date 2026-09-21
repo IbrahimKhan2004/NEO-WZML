@@ -34,6 +34,11 @@ from web.sync_streams_store import (
     get_sync_data,
     save_delays as save_sync_delays,
 )
+from web.add_streams_store import (
+    clean_groups as clean_add_groups,
+    get_add_data,
+    save_groups as save_add_groups,
+)
 from web.mega_selection_store import (
     get_file_list as get_mega_file_list,
     update_selected_ids as set_mega_selected_ids,
@@ -174,6 +179,35 @@ async def sync_streams_submit(request: Request, gid: str = ""):
         return JSONResponse({"success": False, "error": "Invalid delay format."})
     ok = await to_thread(save_sync_delays, gid, delays)
     return JSONResponse({"success": ok, "error": "Could not save sync configuration." if not ok else ""})
+
+
+@app.get("/app/add_streams", response_class=HTMLResponse)
+async def add_streams_page(request: Request):
+    return templates.TemplateResponse(request, "add_streams.html")
+
+
+@app.get("/app/add_streams/files")
+async def add_streams_files(gid: str = ""):
+    data = await to_thread(get_add_data, gid)
+    if data is None:
+        return JSONResponse({"error": "Task not found or expired"}, status_code=404)
+    return JSONResponse(data)
+
+
+@app.post("/app/add_streams/submit")
+async def add_streams_submit(request: Request, gid: str = ""):
+    data = await to_thread(get_add_data, gid)
+    if data is None:
+        return JSONResponse({"success": False, "error": "Task not found or expired"}, status_code=404)
+    try:
+        groups = (await request.json()).get("groups", [])
+    except Exception:
+        groups = []
+    valid, error = clean_add_groups(data, groups)
+    if not valid:
+        return JSONResponse({"success": False, "error": error})
+    ok = await to_thread(save_add_groups, gid, valid)
+    return JSONResponse({"success": ok, "error": "Could not save configuration." if not ok else ""})
 
 
 @app.get("/app/merge", response_class=HTMLResponse)
