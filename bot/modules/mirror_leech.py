@@ -180,7 +180,7 @@ class Mirror(TaskListener):
                 vt_attrs = (
                     "merge_video", "merge_name", "advanced_merge", "extract_stream",
                     "remove_stream", "audio_swap", "subtitle_swap", "sync_streams",
-                    "vt_convert_audio", "vt_audio_bitrate",
+                    "add_streams", "vt_convert_audio", "vt_audio_bitrate",
                 )
                 vt_key = (
                     (self.user_id, args["-m"])
