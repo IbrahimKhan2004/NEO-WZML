@@ -1,6 +1,6 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
-from io import BufferedReader
+from io import BufferedReader, FileIO
 from mimetypes import guess_type
 from os import path as ospath
 from os import walk as oswalk
@@ -27,7 +27,7 @@ UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 class ProgressFileReader(BufferedReader):
     def __init__(self, filename, read_callback=None):
-        super().__init__(open(filename, "rb"))
+        super().__init__(FileIO(filename, "rb"))
         self.__read_callback = read_callback
         self.length = Path(filename).stat().st_size
 
