@@ -47,6 +47,7 @@ class MirrorStatus:
     STATUS_EXTRACT_STREAM = "Extract Stream"
     STATUS_CONVERT_AUDIO = "Convert Audio"
     STATUS_SYNC_STREAMS = "Sync Streams"
+    STATUS_ADD_STREAMS = "Add Streams"
     STATUS_WAITING = "Waiting for User"
 
 
@@ -94,6 +95,7 @@ STATUSES = {
     "ES": MirrorStatus.STATUS_EXTRACT_STREAM,
     "CA": MirrorStatus.STATUS_CONVERT_AUDIO,
     "SY": MirrorStatus.STATUS_SYNC_STREAMS,
+    "AD": MirrorStatus.STATUS_ADD_STREAMS,
     "WU": MirrorStatus.STATUS_WAITING,
 }
 
