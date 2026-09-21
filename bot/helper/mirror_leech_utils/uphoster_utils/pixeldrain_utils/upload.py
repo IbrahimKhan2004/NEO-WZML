@@ -1,6 +1,6 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
-from io import BufferedReader
+from io import BufferedReader, FileIO
 from logging import getLogger
 from os import path as ospath
 from os import walk as oswalk
@@ -25,7 +25,7 @@ UPLOAD_TIMEOUT = ClientTimeout(total=None)
 
 class ProgressFileReader(BufferedReader):
     def __init__(self, filename, read_callback=None):
-        super().__init__(open(filename, "rb"))
+        super().__init__(FileIO(filename, "rb"))
         self.__read_callback = read_callback
         self.length = Path(filename).stat().st_size
 
@@ -117,7 +117,7 @@ class PixelDrainUpload:
         auth = BasicAuth("", self.token)
         async with ClientSession(auth=auth, timeout=UPLOAD_TIMEOUT) as session:
             async with session.post(f"{self.api_url}list", json=data) as resp:
-                if resp.status == 200:
+                if resp.status in (200, 201):
                     res = await resp.json(content_type=None)
                     if res.get("success"):
                         return res.get("id")
