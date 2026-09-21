@@ -177,6 +177,7 @@ class TaskConfig:
         self.audio_swap = False
         self.subtitle_swap = False
         self.sync_streams = False
+        self.add_streams = False
         self.vt_convert_audio = ""
         self.vt_audio_bitrate = ""
         self.private_link = False
@@ -1533,6 +1534,80 @@ class TaskConfig:
 
                 sync_obj.processed_bytes = int(self.size * (idx / total_targets))
 
+        return dl_path
+
+    async def proceed_add_streams(self, dl_path, gid):
+        from bot.modules.add_streams import get_add_streams_config
+        from web.add_streams_store import resolve_output_name
+
+        groups = await get_add_streams_config(self, dl_path)
+        if not groups:
+            self.is_cancelled = True
+            return False
+
+        parent_dir = ospath.dirname(dl_path)
+        ffmpeg = FFMpeg(self)
+        consumed = set()
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Add Streams")
+        self.progress = False
+        async with cpu_eater_lock:
+            self.progress = True
+            for index, group in enumerate(groups, 1):
+                if self.is_cancelled:
+                    return False
+                base_path = ospath.join(parent_dir, group["base_video"])
+                out_dir = ospath.dirname(base_path)
+                final_path = ospath.join(
+                    out_dir, resolve_output_name(base_path, group["output_name"])
+                )
+                tmp_path = ospath.join(out_dir, f".addstreams_{self.mid}_{index}.mkv")
+                tracks = [
+                    {**t, "path": ospath.join(parent_dir, t["file"])}
+                    for t in group["tracks"]
+                ]
+                missing = None
+                for p in [base_path, *(t["path"] for t in tracks)]:
+                    if not await aiopath.isfile(p):
+                        missing = p
+                        break
+                if missing:
+                    self.is_cancelled = True
+                    await self.on_upload_error(
+                        f"Add Audio/Subtitles failed: {ospath.basename(missing)} not found!"
+                    )
+                    return False
+                if final_path != base_path and await aiopath.exists(final_path):
+                    self.is_cancelled = True
+                    await self.on_upload_error(
+                        f"Add Audio/Subtitles failed: {ospath.basename(final_path)} already exists!"
+                    )
+                    return False
+                if await aiopath.exists(tmp_path):
+                    await remove(tmp_path)
+                self.proceed_count += 1
+                self.subname = ospath.basename(base_path)
+                self.subsize = await get_path_size(base_path)
+                output = await ffmpeg.add_streams(base_path, tracks, tmp_path)
+                if self.is_cancelled:
+                    return False
+                if not output:
+                    self.is_cancelled = True
+                    await self.on_upload_error(
+                        "Add Audio/Subtitles failed: "
+                        f"{(ffmpeg.error or 'ffmpeg exited with error')[-500:]}"
+                    )
+                    return False
+                await remove(base_path)
+                await move(output, final_path)
+                consumed.update(t["path"] for t in tracks)
+        for path in consumed:
+            with suppress(Exception):
+                await remove(path)
+        await send_message(
+            self.message,
+            f"{self.tag},\n\n✅ All {len(groups)} group(s) processed successfully!",
+        )
         return dl_path
 
     async def proceed_subtitle_swap(self, dl_path, gid):
