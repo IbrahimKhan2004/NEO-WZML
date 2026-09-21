@@ -1151,6 +1151,88 @@ class FFMpeg:
                 await remove(output)
             return False
 
+    async def add_streams(self, video_file, tracks, output):
+        self.clear()
+        self.error = ""
+        self._total_time = (await get_media_info(video_file))[0]
+        base_streams = await get_streams(video_file) or []
+        counts = {
+            ctype: sum(1 for s in base_streams if s.get("codec_type") == ctype)
+            for ctype in ("audio", "subtitle")
+        }
+        inputs = []
+        map_args = ["-map", "0", "-map", "-0:d"]
+        for t in tracks:
+            if t["path"] not in inputs:
+                inputs.append(t["path"])
+            ctype = "a" if t["type"] == "audio" else "s"
+            map_args.extend(["-map", f"{inputs.index(t['path']) + 1}:{ctype}:{t['index']}"])
+        meta_args = []
+        for ctype, flag in (("audio", "a"), ("subtitle", "s")):
+            added = [t for t in tracks if t["type"] == ctype]
+            if not added:
+                continue
+            if any(t["default"] for t in added):
+                for i in range(counts[ctype]):
+                    meta_args.extend([f"-disposition:{flag}:{i}", "-default"])
+            for j, t in enumerate(added):
+                pos = counts[ctype] + j
+                meta_args.extend(
+                    [
+                        f"-disposition:{flag}:{pos}",
+                        "+default" if t["default"] else "-default",
+                        f"-metadata:s:{flag}:{pos}",
+                        f"language={t['language']}",
+                        f"-metadata:s:{flag}:{pos}",
+                        f"title={t['title']}",
+                    ]
+                )
+        cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            video_file,
+        ]
+        for path in inputs:
+            cmd.extend(["-i", path])
+        cmd.extend(
+            [*map_args, *meta_args, "-c", "copy", "-threads", f"{threads}", output]
+        )
+        if self._listener.is_cancelled:
+            return False
+        self._listener.subproc = await create_subprocess_exec(
+            *cmd, stdout=PIPE, stderr=PIPE
+        )
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+        if self._listener.is_cancelled:
+            return False
+        if code == 0:
+            return output
+        elif code == -9:
+            self._listener.is_cancelled = True
+            return False
+        else:
+            try:
+                stderr = stderr.decode().strip()
+            except Exception:
+                stderr = "Unable to decode the error!"
+            self.error = stderr
+            LOGGER.error(
+                f"{stderr}. Something went wrong while adding streams. Path: {video_file}"
+            )
+            if await aiopath.exists(output):
+                await remove(output)
+            return False
+
     async def sample_video(self, video_file, sample_duration, part_duration):
         self.clear()
         self._total_time = sample_duration
