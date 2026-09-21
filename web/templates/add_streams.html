@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en" class="light dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Audio &amp; Subs Config</title>
+    <script>
+        if (localStorage.theme === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'] },
+                    colors: {
+                        ios: {
+                            bg: '#f2f2f7',
+                            surface: '#ffffff',
+                            divider: '#c6c6c8',
+                            blue: '#007aff',
+                            red: '#ff3b30',
+                            gray: '#8e8e93',
+                            darkBg: '#000000',
+                            darkSurface: '#1c1c1e',
+                            darkDivider: '#38383a',
+                            darkBlue: '#0a84ff',
+                            darkRed: '#ff453a',
+                            darkGray: '#98989d'
+                        },
+                        brand: {
+                            bg: '#F5F5F7',
+                            surface: '#FFFFFF',
+                            border: '#E2E8F0',
+                            primary: '#0F0F23',
+                            secondary: '#1E1B4B',
+                            accent: '#E11D48',
+                            muted: '#64748B',
+                            darkBg: '#000000',
+                            darkSurface: '#0F0F23',
+                            darkBorder: '#1E1B4B',
+                            darkMuted: '#94A3B8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; transition: background-color 0.3s, color 0.3s; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .ios-list-item:not(:last-child)::after { content: ""; position: absolute; bottom: 0; left: 56px; right: 0; height: 1px; background-color: rgb(198, 198, 200); transform: scaleY(0.5); transition: background-color 0.3s; }
+        .dark .ios-list-item:not(:last-child)::after { background-color: rgb(56, 56, 58); }
+        @keyframes slideIn { 0% { opacity: 0; transform: translateX(-10px); } 100% { opacity: 1; transform: translateX(0); } }
+        .animate-item { animation: slideIn 0.2s ease-out forwards; opacity: 0; }
+        .searchable-select-container { position: relative; }
+        .searchable-select-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 9999; width: 100%; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border: 1px solid rgb(198, 198, 200); }
+        .dark .searchable-select-dropdown { border-color: rgb(56, 56, 58); }
+        .searchable-select-container.open .searchable-select-dropdown { display: block; }
+        .searchable-option { display: flex !important; }
+        .searchable-option.hidden-option { display: none !important; }
+        .searchable-option:hover { background-color: rgb(242, 242, 247); }
+        .dark .searchable-option:hover { background-color: rgba(255, 255, 255, 0.05); }
+    </style>
+</head>
+<body class="bg-brand-bg text-brand-primary dark:bg-brand-darkBg dark:text-white p-4 md:p-6 lg:max-w-4xl lg:mx-auto font-sans antialiased selection:bg-brand-accent selection:text-white">
+
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold tracking-tight">Audio &amp; Subs</h1>
+
+        <div class="flex items-center gap-4">
+            <button id="theme-btn" onclick="toggleTheme()" class="text-brand-accent dark:text-brand-accent text-xl bg-transparent active:opacity-50 transition-opacity">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:block"></i>
+            </button>
+            <button id="submit-btn" onclick="submitConfig()" class="text-brand-accent dark:text-brand-accent font-semibold text-[17px] bg-transparent active:opacity-50 transition-opacity">
+                Save
+            </button>
+        </div>
+    </div>
+
+    <div id="status-message" class="text-sm text-center mb-4 font-medium hidden"></div>
+
+    <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mb-1.5 ml-4 flex justify-between items-center pr-4">
+        <span>Active Group</span>
+        <button onclick="deleteActiveGroup()" class="text-ios-red dark:text-ios-darkRed active:opacity-50"><i class="fas fa-trash-alt mr-1"></i> Delete</button>
+    </div>
+
+    <div class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl mb-6 p-3 transition-colors duration-300">
+        <div class="flex overflow-x-auto bg-[#e3e3e8] dark:bg-[#2c2c2e] p-[2px] rounded-lg mb-4 transition-colors duration-300 scrollbar-hide" id="tabs-container"></div>
+
+        <div class="text-[11px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium mb-1 pl-1">Base Video</div>
+        <div id="base-video-select"></div>
+
+        <div class="text-[11px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium mb-1 pl-1 mt-2">Rename Video (Optional)</div>
+        <input type="text" id="input_rename_video" oninput="updateRename(this.value)" class="w-full bg-brand-bg dark:bg-[#2c2c2e] text-[14px] p-3 rounded-lg border border-transparent focus:outline-none shadow-sm text-black dark:text-white transition-colors duration-300 mb-2" placeholder="e.g. My Custom Video">
+    </div>
+
+    <div id="tracks-wrapper" class="hidden">
+        <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mb-1.5 ml-4 flex justify-between items-center pr-4">
+            <span>Track Mapping (<span id="active-track-count">0</span>)</span>
+        </div>
+        <div class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl mb-6 transition-colors duration-300" id="tracks-list"></div>
+    </div>
+
+    <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mb-1.5 ml-4">
+        Add External Audio
+    </div>
+    <div class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl mb-6 transition-colors duration-300 p-3 flex gap-2 w-full">
+        <div id="ext-audio-select" class="flex-1 min-w-0"></div>
+        <button id="add-audio-btn" onclick="addExternal('audio')" class="bg-brand-accent dark:bg-brand-accent text-white w-[50px] shrink-0 rounded-lg active:opacity-70 transition-opacity flex items-center justify-center">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <div class="text-[13px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium tracking-wide mb-1.5 ml-4">
+        Add External Subtitle
+    </div>
+    <div class="bg-brand-surface dark:bg-brand-darkSurface rounded-xl mb-6 transition-colors duration-300 p-3 flex gap-2 w-full">
+        <div id="ext-subtitle-select" class="flex-1 min-w-0"></div>
+        <button id="add-subtitle-btn" onclick="addExternal('subtitle')" class="bg-brand-accent dark:bg-brand-accent text-white w-[50px] shrink-0 rounded-lg active:opacity-70 transition-opacity flex items-center justify-center">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const gid = urlParams.get('gid');
+
+        let data = { videos: [], audios: [], subtitles: [], languages: [] };
+        let groups = [];
+        let activeGroupId = null;
+        let groupCounter = 0;
+        let trackCounter = 0;
+        const pendingExternal = { audio: '', subtitle: '' };
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+        }
+
+        function baseName(path) {
+            return String(path).split('/').pop();
+        }
+
+        function showStatus(msg, type = 'green') {
+            const el = document.getElementById('status-message');
+            el.classList.remove('hidden', 'text-ios-red', 'dark:text-ios-darkRed', 'text-[#34c759]');
+            el.classList.add(type === 'red' ? 'text-ios-red' : 'text-[#34c759]');
+            if (type === 'red') el.classList.add('dark:text-ios-darkRed');
+            el.innerText = msg;
+        }
+
+        function el(tag, className, text) {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined) node.textContent = text;
+            return node;
+        }
+
+        function langLabel(code) {
+            const found = data.languages.find(l => l[0] === code);
+            return found ? `${found[1]} (${found[0]})` : `Undetermined (und)`;
+        }
+
+        // ---------- searchable select ----------
+        function closeAllSelects(except) {
+            document.querySelectorAll('.searchable-select-container.open').forEach(c => {
+                if (c !== except) c.classList.remove('open');
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.searchable-select-container')) closeAllSelects();
+        });
+
+        // items: [{value, label, sub}]; compact = smaller paddings (used inside track cards)
+        function buildSelect({ items, value, display, searchPlaceholder, onSelect, disabled = false, compact = false }) {
+            const container = el('div', 'searchable-select-container w-full');
+
+            const trigger = el('div', compact
+                ? 'w-full bg-brand-bg dark:bg-[#2c2c2e] text-[14px] p-2 rounded-md cursor-pointer flex justify-between items-center border border-transparent'
+                : 'w-full bg-brand-bg dark:bg-[#2c2c2e] rounded-lg flex items-center transition-colors duration-300 p-3 cursor-pointer justify-between border border-transparent shadow-sm');
+            if (disabled) trigger.classList.add('opacity-50', 'pointer-events-none');
+            const shown = el('span', compact ? 'truncate pr-2' : 'break-all pr-2 text-[15px] text-black dark:text-white', display);
+            trigger.appendChild(shown);
+            if (!disabled) {
+                const chevron = el('i', 'fas fa-chevron-down text-brand-muted ' + (compact ? 'text-[10px]' : 'text-[12px]'));
+                trigger.appendChild(chevron);
+            }
+            container.appendChild(trigger);
+
+            const dropdown = el('div', 'searchable-select-dropdown bg-white dark:bg-[#1c1c1e]' + (compact ? ' mt-1' : ''));
+            const searchWrap = el('div', 'p-2 border-b border-[#c6c6c8] dark:border-[#38383a]');
+            const search = el('input', compact
+                ? 'w-full bg-brand-bg dark:bg-[#2c2c2e] text-[13px] p-1.5 rounded-md border-none focus:outline-none text-black dark:text-white'
+                : 'w-full bg-brand-bg dark:bg-[#2c2c2e] text-[13px] p-2 rounded-md border-none focus:outline-none text-black dark:text-white');
+            search.type = 'text';
+            search.placeholder = searchPlaceholder;
+            searchWrap.appendChild(search);
+            dropdown.appendChild(searchWrap);
+
+            const list = el('div', (compact ? 'max-h-[200px]' : 'max-h-[250px]') + ' overflow-y-auto');
+            items.forEach((item) => {
+                const opt = el('div', 'searchable-option ' + (compact ? 'p-2' : 'p-3 border-b border-[#c6c6c8] dark:border-[#38383a] last:border-0') + ' text-[14px] text-black dark:text-white cursor-pointer justify-between items-center hover:bg-black/5 dark:hover:bg-white/5');
+                opt.dataset.name = `${item.label} ${item.sub || ''} ${item.value}`.toLowerCase();
+                const text = el('span', compact ? '' : 'break-all pr-2', item.label + (item.sub ? ' ' : ''));
+                if (item.sub) text.appendChild(el('span', 'text-brand-muted text-[11px]', item.sub));
+                opt.appendChild(text);
+                if (item.value === value) {
+                    opt.appendChild(el('i', 'fas fa-check text-brand-accent text-[12px] shrink-0'));
+                }
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    container.classList.remove('open');
+                    onSelect(item.value);
+                });
+                list.appendChild(opt);
+            });
+            if (items.length === 0) {
+                list.appendChild(el('div', 'p-3 text-[13px] text-brand-muted dark:text-brand-darkMuted', 'Nothing available'));
+            }
+            dropdown.appendChild(list);
+            container.appendChild(dropdown);
+
+            search.addEventListener('input', () => {
+                const q = search.value.trim().toLowerCase();
+                list.querySelectorAll('.searchable-option').forEach(o => {
+                    o.classList.toggle('hidden-option', q !== '' && !o.dataset.name.includes(q));
+                });
+            });
+            search.addEventListener('click', (e) => e.stopPropagation());
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const willOpen = !container.classList.contains('open');
+                closeAllSelects(container);
+                container.classList.toggle('open', willOpen);
+                if (willOpen) {
+                    search.value = '';
+                    search.dispatchEvent(new Event('input'));
+                    search.focus();
+                }
+            });
+            return container;
+        }
+
+        // ---------- data helpers ----------
+        function activeGroup() {
+            return groups.find(g => g.id === activeGroupId);
+        }
+
+        function externalFiles(type) {
+            return type === 'audio' ? data.audios : data.subtitles;
+        }
+
+        function findStream(type, path, index) {
+            const f = externalFiles(type).find(x => x.path === path);
+            if (!f) return null;
+            return { file: f, stream: (f.streams || []).find(s => s.index === index) || { index, language: 'und', title: '' } };
+        }
+
+        function newGroup(base, name, tracks) {
+            groupCounter++;
+            return { id: 'group_' + groupCounter, base_video: base, output_name: name || '', tracks: tracks || [] };
+        }
+
+        function freeVideos(exceptGroup) {
+            const used = new Set();
+            groups.forEach(g => { if (g !== exceptGroup && g.base_video) used.add(g.base_video); });
+            return data.videos.filter(v => !used.has(v.path));
+        }
+
+        // ---------- groups ----------
+        function createNewGroup() {
+            const free = freeVideos(null);
+            const grp = newGroup(free.length ? free[0].path : '');
+            groups.push(grp);
+            activeGroupId = grp.id;
+            renderAll();
+        }
+
+        function deleteActiveGroup() {
+            if (groups.length <= 1) {
+                showStatus('Error: At least one group is required.', 'red');
+                return;
+            }
+            groups = groups.filter(g => g.id !== activeGroupId);
+            activeGroupId = groups[0].id;
+            renderAll();
+        }
+
+        function setActiveGroup(id) {
+            activeGroupId = id;
+            renderAll();
+        }
+
+        function updateRename(val) {
+            const grp = activeGroup();
+            if (grp) grp.output_name = val;
+        }
+
+        // ---------- tracks ----------
+        function addExternal(type) {
+            const grp = activeGroup();
+            const selected = pendingExternal[type];
+            if (!grp || !selected) {
+                showStatus(`Select an external ${type} first.`, 'red');
+                return;
+            }
+            const cut = selected.lastIndexOf('|');
+            const path = selected.slice(0, cut);
+            const index = parseInt(selected.slice(cut + 1), 10);
+            if (grp.tracks.some(t => t.type === type && t.file === path && t.index === index)) {
+                showStatus('This track is already added to the group.', 'red');
+                return;
+            }
+            const info = findStream(type, path, index);
+            if (!info) return;
+            grp.tracks.push({
+                uid: ++trackCounter,
+                type: type,
+                file: path,
+                index: index,
+                language: info.stream.language || 'und',
+                title: info.stream.title || '',
+                default: false
+            });
+            pendingExternal[type] = '';
+            document.getElementById('status-message').classList.add('hidden');
+            renderTracks();
+            renderExternal();
+        }
+
+        function removeTrack(uid) {
+            const grp = activeGroup();
+            if (!grp) return;
+            grp.tracks = grp.tracks.filter(t => t.uid !== uid);
+            renderTracks();
+        }
+
+        function setDefault(uid, checked) {
+            const grp = activeGroup();
+            const track = grp && grp.tracks.find(t => t.uid === uid);
+            if (!track) return;
+            if (checked) grp.tracks.forEach(t => { if (t.type === track.type) t.default = false; });
+            track.default = checked;
+            renderTracks();
+        }
+
+        // ---------- rendering ----------
+        function renderAll() {
+            renderTabs();
+            renderGroupPanel();
+            renderTracks();
+            renderExternal();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+            groups.forEach((g, index) => {
+                const isActive = g.id === activeGroupId;
+                const btn = el('div', 'flex-none px-4 text-center py-1.5 text-[13px] font-medium rounded-md cursor-pointer transition-all duration-200 ' + (isActive
+                    ? 'bg-white dark:bg-[#636366] shadow-[0_1px_3px_rgba(0,0,0,0.12)]'
+                    : 'bg-transparent text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5'), `Grp ${index + 1}`);
+                btn.onclick = () => setActiveGroup(g.id);
+                container.appendChild(btn);
+            });
+            const addBtn = el('div', 'flex-none px-4 text-center py-1.5 text-[13px] font-medium rounded-md cursor-pointer text-brand-accent dark:text-brand-accent flex items-center justify-center transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5');
+            addBtn.innerHTML = '<i class="fas fa-plus"></i>';
+            addBtn.onclick = createNewGroup;
+            container.appendChild(addBtn);
+        }
+
+        function renderGroupPanel() {
+            const grp = activeGroup();
+            if (!grp) return;
+            const holder = document.getElementById('base-video-select');
+            holder.innerHTML = '';
+            const options = freeVideos(grp);
+            const current = data.videos.find(v => v.path === grp.base_video);
+            const wrap = el('div', 'mb-3');
+            wrap.appendChild(buildSelect({
+                items: options.map(v => ({ value: v.path, label: `${baseName(v.path)} (${formatBytes(v.size)})` })),
+                value: grp.base_video,
+                display: current ? `${baseName(current.path)} (${formatBytes(current.size)})` : 'No base video available',
+                searchPlaceholder: 'Search base video...',
+                disabled: options.length === 0,
+                onSelect: (val) => { grp.base_video = val; renderGroupPanel(); }
+            }));
+            holder.appendChild(wrap);
+            document.getElementById('input_rename_video').value = grp.output_name;
+        }
+
+        function renderTracks() {
+            const grp = activeGroup();
+            const wrapper = document.getElementById('tracks-wrapper');
+            const list = document.getElementById('tracks-list');
+            list.innerHTML = '';
+            const tracks = grp ? grp.tracks : [];
+            document.getElementById('active-track-count').innerText = tracks.length;
+            wrapper.classList.toggle('hidden', tracks.length === 0);
+
+            tracks.forEach((track, index) => {
+                const isSub = track.type === 'subtitle';
+                const info = findStream(track.type, track.file, track.index);
+                const item = el('div', 'ios-list-item p-4 relative bg-transparent transition-colors duration-300 animate-item flex flex-col gap-3');
+                item.style.animationDelay = `${index * 30}ms`;
+
+                const head = el('div', 'flex items-center justify-between');
+                const left = el('div', 'flex items-center');
+                const icon = el('div', 'w-[28px] h-[28px] rounded-md text-white text-[12px] flex items-center justify-center shrink-0 mr-3 ' + (isSub ? 'bg-[#34c759]' : 'bg-[#007aff]'));
+                icon.innerHTML = isSub ? '<i class="fas fa-closed-captioning"></i>' : '<i class="fas fa-volume-up"></i>';
+                left.appendChild(icon);
+                left.appendChild(el('div', 'text-[15px] font-semibold text-black dark:text-white flex items-center', `${track.type.toUpperCase()} Track`));
+                head.appendChild(left);
+                const rm = el('button', 'text-ios-red dark:text-ios-darkRed text-lg active:opacity-50');
+                rm.innerHTML = '<i class="fas fa-minus-circle"></i>';
+                rm.onclick = () => removeTrack(track.uid);
+                head.appendChild(rm);
+                item.appendChild(head);
+
+                const meta = el('div', 'pl-[40px]');
+                const size = info ? formatBytes(info.file.size) : '0 B';
+                meta.appendChild(el('div', 'text-[12px] text-brand-muted dark:text-brand-darkMuted mb-2 break-all', `${baseName(track.file)} (${size}) (Index ${track.index})`));
+                item.appendChild(meta);
+
+                const grid = el('div', 'grid grid-cols-2 gap-3 pl-[40px] z-[999] relative');
+                const langBox = el('div');
+                langBox.appendChild(el('label', 'text-[11px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium mb-1 block', 'Language'));
+                langBox.appendChild(buildSelect({
+                    items: data.languages.map(l => ({ value: l[0], label: l[1], sub: `(${l[0]})` })),
+                    value: track.language,
+                    display: langLabel(track.language),
+                    searchPlaceholder: 'Search language...',
+                    compact: true,
+                    onSelect: (val) => { track.language = val; renderTracks(); }
+                }));
+                grid.appendChild(langBox);
+
+                const titleBox = el('div');
+                titleBox.appendChild(el('label', 'text-[11px] uppercase text-brand-muted dark:text-brand-darkMuted font-medium mb-1 block', 'Title'));
+                const titleInput = el('input', 'w-full bg-brand-bg dark:bg-[#2c2c2e] text-[14px] p-2 rounded-md border-none focus:ring-0 text-black dark:text-white');
+                titleInput.type = 'text';
+                titleInput.value = track.title;
+                titleInput.placeholder = "e.g. Director's Cut";
+                titleInput.addEventListener('input', () => { track.title = titleInput.value; });
+                titleBox.appendChild(titleInput);
+                grid.appendChild(titleBox);
+                item.appendChild(grid);
+
+                const defRow = el('div', 'pl-[40px] flex gap-4 mt-1');
+                const defLabel = el('label', 'flex items-center gap-2 text-[13px] text-black dark:text-white cursor-pointer');
+                const cb = el('input', 'w-4 h-4 text-brand-accent focus:ring-brand-accent rounded');
+                cb.type = 'checkbox';
+                cb.checked = track.default;
+                cb.addEventListener('change', () => setDefault(track.uid, cb.checked));
+                defLabel.appendChild(cb);
+                defLabel.appendChild(document.createTextNode(`Make Default ${track.type}`));
+                defRow.appendChild(defLabel);
+                item.appendChild(defRow);
+
+                list.appendChild(item);
+            });
+        }
+
+        function renderExternal() {
+            const config = {
+                audio: { holder: 'ext-audio-select', btn: 'add-audio-btn', empty: 'No external audio available', ph: 'Select an external audio...', search: 'Search external audio...' },
+                subtitle: { holder: 'ext-subtitle-select', btn: 'add-subtitle-btn', empty: 'No external subtitle available', ph: 'Select an external subtitle...', search: 'Search external subtitle...' }
+            };
+            ['audio', 'subtitle'].forEach((type) => {
+                const cfg = config[type];
+                const items = [];
+                externalFiles(type).forEach((f) => {
+                    const streams = f.streams || [];
+                    streams.forEach((s) => {
+                        items.push({
+                            value: `${f.path}|${s.index}`,
+                            label: `${baseName(f.path)} (${formatBytes(f.size)})` + (streams.length > 1 ? ` - Track ${s.index + 1}` : '')
+                        });
+                    });
+                });
+                const holder = document.getElementById(cfg.holder);
+                holder.innerHTML = '';
+                const chosen = items.find(i => i.value === pendingExternal[type]);
+                holder.appendChild(buildSelect({
+                    items: items,
+                    value: pendingExternal[type],
+                    display: items.length === 0 ? cfg.empty : (chosen ? chosen.label : cfg.ph),
+                    searchPlaceholder: cfg.search,
+                    disabled: items.length === 0,
+                    onSelect: (val) => { pendingExternal[type] = val; renderExternal(); }
+                }));
+                document.getElementById(cfg.btn).classList.toggle('opacity-50', items.length === 0);
+                document.getElementById(cfg.btn).classList.toggle('pointer-events-none', items.length === 0);
+            });
+        }
+
+        // ---------- load / save ----------
+        async function fetchData() {
+            if (!gid) { showStatus('Missing GID parameter.', 'red'); return; }
+            try {
+                const response = await fetch(`${window.location.pathname.replace(/\/$/, '')}/files?gid=${gid}`);
+                if (!response.ok) throw new Error('Task not found or expired');
+                const res = await response.json();
+                if (res.error) { showStatus(res.error, 'red'); return; }
+                data = {
+                    videos: res.videos || [],
+                    audios: res.audios || [],
+                    subtitles: res.subtitles || [],
+                    languages: res.languages || []
+                };
+                (res.groups || []).forEach((g) => {
+                    const tracks = (g.tracks || []).map(t => ({
+                        uid: ++trackCounter,
+                        type: t.type,
+                        file: t.file,
+                        index: t.index,
+                        language: t.language || 'und',
+                        title: t.title || '',
+                        default: t.default === true
+                    }));
+                    groups.push(newGroup(g.base_video, g.output_name, tracks));
+                });
+                if (groups.length > 0) {
+                    activeGroupId = groups[0].id;
+                    renderAll();
+                } else {
+                    createNewGroup();
+                }
+            } catch (error) {
+                showStatus(error.message || 'Failed to load connection.', 'red');
+            }
+        }
+
+        async function submitConfig() {
+            const btn = document.getElementById('submit-btn');
+            for (let i = 0; i < groups.length; i++) {
+                if (!groups[i].base_video) { showStatus(`Error: Grp ${i + 1} has no base video.`, 'red'); return; }
+                if (groups[i].tracks.length === 0) { showStatus(`Error: Grp ${i + 1} has no audio/subtitle track.`, 'red'); return; }
+            }
+            const payload = groups.map(g => ({
+                base_video: g.base_video,
+                output_name: g.output_name.trim(),
+                tracks: g.tracks.map(t => ({
+                    type: t.type,
+                    file: t.file,
+                    index: t.index,
+                    language: t.language,
+                    title: t.title.trim(),
+                    default: t.default
+                }))
+            }));
+
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = 'Saving...';
+            btn.classList.add('opacity-50');
+
+            try {
+                const response = await fetch(`${window.location.pathname.replace(/\/$/, '')}/submit?gid=${gid}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groups: payload })
+                });
+                const res = await response.json();
+                if (res.success) {
+                    showStatus('Config Saved. Return to Telegram.', 'green');
+                    btn.innerHTML = 'Done';
+                    document.querySelectorAll('button:not(#submit-btn), input, .searchable-select-container, #tabs-container').forEach(node => {
+                        node.style.opacity = '0.5';
+                        node.style.pointerEvents = 'none';
+                    });
+                } else {
+                    showStatus(res.error || 'Failed to save.', 'red');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('opacity-50');
+                }
+            } catch (error) {
+                showStatus('Network Error.', 'red');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                btn.classList.remove('opacity-50');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+</body>
+</html>
