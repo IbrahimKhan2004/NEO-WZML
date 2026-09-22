@@ -99,6 +99,7 @@ class MergeVideos:
                 "-f", "concat", "-safe", "0",
                 "-i", concat_path,
                 "-map", "0", "-map", "-0:t",
+                "-ignore_unknown",
                 "-c", "copy",
                 output_path,
             ]
