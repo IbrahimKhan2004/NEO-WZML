@@ -244,9 +244,14 @@ class GoFileUpload:
             raise ValueError("Password Length must be greater than 4")
 
         servers = await self.__getServer()
-        server = choice(servers)["name"]
-        req_dict = {}
+        server_names = [s["name"] for s in servers if isinstance(s, dict) and "name" in s]
+        if not server_names:
+            raise Exception("No GoFile servers available")
 
+        from random import sample
+        server_names = sample(server_names, len(server_names))
+
+        req_dict = {}
         if self.token:
             req_dict["token"] = self.token
         if folderId:
@@ -265,14 +270,29 @@ class GoFileUpload:
 
         upload_filename = ospath.basename(path).replace(" ", ".")
 
-        upload_file = await self.upload_aiohttp(
-            f"https://{server}.gofile.io/uploadfile",
-            path,
-            "file",
-            req_dict,
-            target_filename=upload_filename,
-        )
-        return await self.__resp_handler(upload_file)
+        last_exception = None
+        for server in server_names:
+            if self.listener.is_cancelled:
+                return None
+            try:
+                upload_file = await self.upload_aiohttp(
+                    f"https://{server}.gofile.io/uploadfile",
+                    path,
+                    "file",
+                    req_dict,
+                    target_filename=upload_filename,
+                )
+                return await self.__resp_handler(upload_file)
+            except Exception as err:
+                if isinstance(err, RetryError):
+                    err = err.last_attempt.exception()
+                LOGGER.warning(
+                    f"GoFile upload to server '{server}' failed: {err}. Retrying with another server..."
+                )
+                last_exception = err
+
+        if last_exception:
+            raise last_exception
 
     async def _upload_dir(
         self, input_directory, parent_folder_id=None, root_folder_id=None

@@ -85,8 +85,10 @@ class StorageToUpload:
         headers = {"X-Visitor-Token": self.visitor_token}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        if owner_token:
-            headers["X-Owner-Token"] = owner_token
+            if owner_token:
+                headers["X-Owner-Token"] = owner_token
+        elif owner_token:
+            headers["Authorization"] = f"Owner {owner_token}"
         return headers
 
     @retry(
@@ -125,14 +127,23 @@ class StorageToUpload:
         ) as file:
             if init_res.get("type") == "multipart":
                 part_size = init_res["part_size"]
-                urls = init_res["initial_urls"]
+                urls = init_res.get("initial_urls") or {}
                 parts = []
                 part_no = 1
                 while True:
                     chunk = file.read(part_size)
                     if not chunk:
                         break
-                    url = urls.get(str(part_no))
+                    url = None
+                    if isinstance(urls, dict):
+                        url = urls.get(str(part_no)) or urls.get(part_no)
+                    elif isinstance(urls, list) and len(urls) >= part_no:
+                        item = urls[part_no - 1]
+                        if isinstance(item, dict):
+                            url = item.get("url") or item.get("upload_url")
+                        elif isinstance(item, str):
+                            url = item
+
                     if not url:
                         async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
                             async with session.post(
@@ -143,7 +154,42 @@ class StorageToUpload:
                                 },
                                 headers=self.__headers(owner_token),
                             ) as resp:
-                                url = (await resp.json())["part_urls"][0]["url"]
+                                if resp.status not in [200, 201]:
+                                    raise Exception(
+                                        f"Get Parts Failed (HTTP {resp.status}): {await resp.text()}"
+                                    )
+                                parts_res = await resp.json()
+                                if not parts_res.get("success", True):
+                                    err_msg = parts_res.get("error", "Unknown error")
+                                    raise Exception(f"Get Parts Error: {err_msg}")
+
+                                part_urls = (
+                                    parts_res.get("part_urls")
+                                    or parts_res.get("urls")
+                                    or parts_res.get("parts")
+                                )
+                                if isinstance(part_urls, list) and part_urls:
+                                    part_obj = next(
+                                        (
+                                            p
+                                            for p in part_urls
+                                            if isinstance(p, dict)
+                                            and p.get("partNumber") == part_no
+                                        ),
+                                        part_urls[0],
+                                    )
+                                    if isinstance(part_obj, dict):
+                                        url = part_obj.get("url") or part_obj.get("upload_url")
+                                    elif isinstance(part_obj, str):
+                                        url = part_obj
+                                elif isinstance(part_urls, dict):
+                                    url = part_urls.get(str(part_no)) or part_urls.get(part_no)
+
+                                if not url:
+                                    raise Exception(
+                                        f"Could not retrieve part url for part {part_no} from response: {parts_res}"
+                                    )
+
                     etag = await self.__put_part(url, chunk)
                     parts.append({"partNumber": part_no, "etag": etag})
                     part_no += 1
