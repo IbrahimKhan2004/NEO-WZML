@@ -346,7 +346,7 @@ def direct_link_generator(link):
         return gdflix(link)
     elif is_hubcloud(link) or is_hubdrive(link) or is_hubcdn(link) or is_hblinks(link):
         return hubcloud(link)
-    elif "tb-cdn.io" in domain or "torbox.app" in domain:
+    elif "tb-cdn" in domain or "torbox" in domain:
         return torbox(link)
     elif Config.DEBRID_LINK_API and any(
         x in domain for x in debrid_link_supported_sites
@@ -1310,18 +1310,18 @@ def mydrive_worker(url):
 
 
 def torbox(url: str):
-    filename = __get_filename_from_headers(url)
-    if not filename:
-        filename = url.split("/")[-1].split("?")[0]
+    try:
+        details = direct_stream_link(url)
+        filename = details["contents"][0]["filename"]
         if "/zip/" in url and not filename.endswith(".zip"):
             filename += ".zip"
-    if not filename:
-        raise DirectDownloadLinkException("ERROR: Unable to determine TorBox filename")
-    return {
-        "contents": [{"path": "", "filename": filename, "url": url}],
-        "title": filename,
-        "total_size": 0,
-    }
+            details["contents"][0]["filename"] = filename
+            details["title"] = filename
+        return details
+    except DirectDownloadLinkException:
+        raise
+    except Exception as e:
+        raise DirectDownloadLinkException(f"ERROR: TorBox - {e}") from e
 
 
 def direct_stream_link(url):
