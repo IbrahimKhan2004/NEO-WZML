@@ -10,7 +10,7 @@ from http.cookiejar import MozillaCookieJar
 from json import loads
 from lxml.etree import HTML
 from os import path as ospath
-from re import DOTALL, findall, fullmatch, match, search, sub
+from re import DOTALL, IGNORECASE, findall, fullmatch, match, search, sub
 from requests import Session, post, get, RequestException
 from requests.adapters import HTTPAdapter
 from time import sleep, time
@@ -536,7 +536,10 @@ def direct_link_generator(link):
     ):
         raise DirectDownloadLinkException(f"ERROR: R.I.P {domain}")
     else:
-        raise DirectDownloadLinkException(f"No Direct link function found for {link}")
+        try:
+            return direct_stream_link(link)
+        except Exception:
+            raise DirectDownloadLinkException(f"No Direct link function found for {link}")
 
 
 def get_captcha_token(session, params):
@@ -1323,16 +1326,38 @@ def torbox(url: str):
 
 def direct_stream_link(url):
     """Pass-through for hosts that already serve the file directly."""
+    req_headers = {"User-Agent": user_agent}
+    content_disposition = ""
+    content_length = 0
+    final_url = url
+
     try:
         with create_scraper() as session:
-            resp = session.head(url, allow_redirects=True)
-            if resp.status_code != 200:
-                raise DirectDownloadLinkException(
-                    f"ERROR: Link not accessible (Status: {resp.status_code})"
+            try:
+                resp = session.head(url, headers=req_headers, timeout=10, allow_redirects=True)
+                if resp.status_code in (200, 206):
+                    content_disposition = resp.headers.get("Content-Disposition", "")
+                    content_length = resp.headers.get("Content-Length", 0)
+                    final_url = resp.url
+            except Exception:
+                pass
+
+            if not content_disposition:
+                resp = session.get(
+                    url,
+                    headers=req_headers,
+                    timeout=10,
+                    allow_redirects=True,
+                    stream=True,
                 )
-            filename = __parse_content_disposition(
-                resp.headers.get("Content-Disposition", "")
-            )
+                if resp.status_code in (200, 206):
+                    content_disposition = resp.headers.get("Content-Disposition", "")
+                    if not content_length:
+                        content_length = resp.headers.get("Content-Length", 0)
+                    final_url = resp.url
+                resp.close()
+
+            filename = __parse_content_disposition(content_disposition)
     except DirectDownloadLinkException:
         raise
     except Exception as e:
@@ -1341,13 +1366,19 @@ def direct_stream_link(url):
         ) from e
 
     if not filename:
-        filename = unquote(urlparse(url).path.split("/")[-1].split("?")[0])
+        filename = unquote(urlparse(final_url).path.split("/")[-1].split("?")[0])
     if not filename:
         raise DirectDownloadLinkException("ERROR: Unable to determine filename")
+
+    try:
+        total_size = int(content_length)
+    except (ValueError, TypeError):
+        total_size = 0
+
     return {
-        "contents": [{"path": "", "filename": filename, "url": url}],
+        "contents": [{"path": "", "filename": filename, "url": final_url}],
         "title": filename,
-        "total_size": 0,
+        "total_size": total_size,
     }
 
 
@@ -1355,33 +1386,33 @@ def __parse_content_disposition(content_disposition):
     """Extract a filename from a Content-Disposition header value."""
     if not content_disposition:
         return None
-    # RFC 5987 form takes precedence: filename*=UTF-8''Dark%20S01.zip
-    if "filename*=" in content_disposition:
-        try:
-            part = (
-                content_disposition.split("filename*=")[1]
-                .split(";")[0]
-                .strip()
-                .strip("\"'")
-            )
-            if "''" in part:
-                part = part.split("''")[1]
-            if filename := unquote(part):
-                return filename
-        except Exception:
-            pass
-    if "filename=" in content_disposition:
-        try:
-            part = (
-                content_disposition.split("filename=")[1]
-                .split(";")[0]
-                .strip()
-                .strip("\"'")
-            )
-            if filename := unquote(part):
-                return filename
-        except Exception:
-            pass
+
+    # 1. Check for filename*= (RFC 5987 / RFC 6266)
+    if m := search(r"filename\*=\s*([^\s;]+)", content_disposition, flags=IGNORECASE):
+        val = m.group(1).strip("\"'")
+        if "''" in val:
+            val = val.split("''", 1)[1]
+        elif "'" in val:
+            parts = val.split("'")
+            if len(parts) >= 3:
+                val = parts[-1]
+        if filename := unquote(val):
+            if cleaned := filename.strip():
+                return cleaned
+
+    # 2. Check for quoted filename="..."
+    if m := search(r'filename\s*=\s*"([^"]+)"', content_disposition, flags=IGNORECASE):
+        if filename := unquote(m.group(1).strip()):
+            if cleaned := filename.strip():
+                return cleaned
+
+    # 3. Check for unquoted filename=... (up to semicolon or end of string)
+    if m := search(r"filename\s*=\s*([^;]+)", content_disposition, flags=IGNORECASE):
+        val = m.group(1).strip().strip("\"'")
+        if filename := unquote(val):
+            if cleaned := filename.strip():
+                return cleaned
+
     return None
 
 
@@ -2725,13 +2756,7 @@ def _hub_fetch(session, url, referer=None, follow=True, timeout=45, retries=3):
 
 
 def _filename_from_cd(content_disposition):
-    if not content_disposition:
-        return None
-    if m := search(r"filename\*=(?:UTF-8'')?([^;]+)", content_disposition):
-        return unquote(m.group(1).strip().strip("\"'")) or None
-    if m := search(r'filename="?([^";]+)"?', content_disposition):
-        return unquote(m.group(1).strip()) or None
-    return None
+    return __parse_content_disposition(content_disposition)
 
 
 def _validate_direct_link(
