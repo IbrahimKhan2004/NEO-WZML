@@ -3,6 +3,7 @@ from bot.helper.mirror_leech_utils.download_utils.direct_link_generator import (
     __parse_content_disposition,
     _filename_from_cd,
     direct_link_generator,
+    is_supported_direct_link,
 )
 
 
@@ -68,3 +69,15 @@ def test_torbox_tb_cdn_st_domain_resolution():
             == "Gossip Girl S01-S06 Season 1-6 Complete 720p HDTV x264-[maximersk].zip"
         )
         assert res["total_size"] == 109513011652
+
+
+def test_is_supported_direct_link():
+    assert (
+        is_supported_direct_link(
+            "https://store-022.weur.tb-cdn.st/zip/a513fbcf-39c8-4304-81f4"
+        )
+        is True
+    )
+    assert is_supported_direct_link("https://gofile.io/d/xyz") is True
+    assert is_supported_direct_link("https://mediafire.com/file/xyz") is True
+    assert is_supported_direct_link("https://randomsite.com/video.mp4") is False

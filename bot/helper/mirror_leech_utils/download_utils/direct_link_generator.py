@@ -325,6 +325,94 @@ HUB_REJECT_HREF = (
 HUB_INTERSTITIAL_HOSTS = ("pixel.hubcloud", "gamerxyt.com", "fastdl-one.pages.dev")
 
 
+def is_supported_direct_link(link: str) -> bool:
+    if not isinstance(link, str) or not link:
+        return False
+    domain = urlparse(link).hostname or ""
+    if not domain:
+        return False
+    if (
+        is_gdflix(link)
+        or is_hubcloud(link)
+        or is_hubdrive(link)
+        or is_hubcdn(link)
+        or is_hblinks(link)
+    ):
+        return True
+    if any(
+        x in domain
+        for x in [
+            "tb-cdn",
+            "torbox",
+            "yadi.sk",
+            "disk.yandex",
+            "buzzheavier",
+            "devuploads",
+            "lulacloud",
+            "fuckingfast",
+            "mediafire",
+            "osdn",
+            "github",
+            "hxfile",
+            "1drv.ms",
+            "pixeldrain",
+            "racaty",
+            "1fichier",
+            "solidfiles",
+            "krakenfiles",
+            "upload.ee",
+            "gofile",
+            "send.cm",
+            "tmpsend",
+            "easyupload",
+            "streamvid",
+            "shrdsk",
+            "pcloud",
+            "qiwi",
+            "mp4upload",
+            "berkasdrive",
+            "swisstransfer",
+            "instagram",
+            "akmfiles",
+            "akmfls",
+            "wetransfer",
+            "we.tl",
+            "streamhub",
+            "linkbox",
+            "lbx.to",
+            "teltobx",
+            "telbx",
+            "workers.dev",
+        ]
+    ):
+        return True
+    if any(
+        x in domain
+        for x in [
+            "dood",
+            "ds2play",
+            "d0o0d",
+            "ds2video",
+            "do0od",
+            "d000d",
+            "streamtape",
+            "streamta.pe",
+            "filelions",
+            "mycloudz",
+            "cabecabean",
+            "embedwish",
+            "kitabmarkaz",
+            "wishfast",
+            "streamwish",
+            "kissmovies",
+        ]
+    ):
+        return True
+    if is_index_link(link) or is_share_link(link):
+        return True
+    return False
+
+
 def direct_link_generator(link):
     auth = None
     if isinstance(link, tuple):

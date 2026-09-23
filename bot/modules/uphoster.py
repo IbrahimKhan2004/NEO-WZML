@@ -37,6 +37,7 @@ from bot.helper.mirror_leech_utils.download_utils.direct_downloader import (
 )
 from bot.helper.mirror_leech_utils.download_utils.direct_link_generator import (
     direct_link_generator,
+    is_supported_direct_link,
 )
 from bot.helper.mirror_leech_utils.download_utils.gd_download import add_gd_download
 from bot.helper.mirror_leech_utils.download_utils.jd_download import add_jd_download
@@ -417,7 +418,11 @@ class Uphoster(TaskListener):
             and not is_mega_link(self.link)
         ):
             content_type = await get_content_type(self.link)
-            if content_type is None or re_match(r"text/html|text/plain", content_type):
+            if (
+                is_supported_direct_link(self.link)
+                or content_type is None
+                or re_match(r"text/html|text/plain", content_type)
+            ):
                 try:
                     # -au/-ap double as the credentials/password for hosts that
                     # need them (index links, GoFile).
