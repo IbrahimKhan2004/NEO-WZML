@@ -785,6 +785,7 @@ class FFMpeg:
                 f"{threads}",
                 output,
             ]
+        cmd[-1:-1] = ["-map", "-0:t", "-ignore_unknown"]
         if self._listener.is_cancelled:
             return False
         self._listener.subproc = await create_subprocess_exec(
@@ -838,6 +839,7 @@ class FFMpeg:
         ]
         if bitrate:
             cmd += ["-b:a", bitrate]
+        cmd += ["-ignore_unknown"]
         cmd.append(output)
         if self._listener.is_cancelled:
             return False
@@ -888,6 +890,7 @@ class FFMpeg:
             "0",
             "-map",
             "-0:t",
+            "-ignore_unknown",
             "-c",
             "copy",
             "-c:a",
@@ -944,6 +947,7 @@ class FFMpeg:
             "-i",
             video_file,
             *map_args,
+            "-ignore_unknown",
             "-c",
             "copy",
             "-threads",
@@ -996,7 +1000,7 @@ class FFMpeg:
         else:
             map_args.extend(["-map", "0:s?"])
 
-        map_args.extend(["-map", "0:d?", "-map", "-0:t"])
+        map_args.extend(["-map", "0:d?", "-map", "-0:t", "-ignore_unknown"])
         cmd = [
             "taskset",
             "-c",
@@ -1051,7 +1055,7 @@ class FFMpeg:
         map_args = ["-map", "0:v?", "-map", "0:a?"]
         for idx in subtitle_indices:
             map_args.extend(["-map", f"0:{idx}"])
-        map_args.extend(["-map", "0:d?", "-map", "-0:t"])
+        map_args.extend(["-map", "0:d?", "-map", "-0:t", "-ignore_unknown"])
         cmd = [
             "taskset",
             "-c",
@@ -1118,6 +1122,9 @@ class FFMpeg:
             "-map",
             "0",
             *map_args,
+            "-map",
+            "-0:t",
+            "-ignore_unknown",
             "-c",
             "copy",
             "-threads",
@@ -1161,7 +1168,7 @@ class FFMpeg:
             for ctype in ("audio", "subtitle")
         }
         inputs = []
-        map_args = ["-map", "0", "-map", "-0:d"]
+        map_args = ["-map", "0", "-map", "-0:d", "-map", "-0:t", "-ignore_unknown"]
         for t in tracks:
             if t["path"] not in inputs:
                 inputs.append(t["path"])
@@ -1290,6 +1297,7 @@ class FFMpeg:
             "[vout]",
             "-map",
             "[aout]",
+            "-ignore_unknown",
             "-c:v",
             "libx264",
             "-c:a",
@@ -1369,6 +1377,7 @@ class FFMpeg:
             if not multi_streams:
                 del cmd[15]
                 del cmd[15]
+            cmd[-1:-1] = ["-ignore_unknown"]
             if self._listener.is_cancelled:
                 return False
             self._listener.subproc = await create_subprocess_exec(
