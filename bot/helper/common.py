@@ -180,6 +180,8 @@ class TaskConfig:
         self.add_streams = False
         self.vt_convert_audio = ""
         self.vt_audio_bitrate = ""
+        self.vt_audio_channel = ""
+        self.vt_audio_stream_mode = "all"
         self.private_link = False
         self.stop_duplicate = False
         self.sample_video = False
@@ -1722,6 +1724,7 @@ class TaskConfig:
 
         aext = self.vt_convert_audio
         bitrate = self.vt_audio_bitrate or None
+        channel = self.vt_audio_channel or None
         files_to_convert = []
         for f_path in files:
             is_video, is_audio, _ = await get_document_type(f_path)
@@ -1735,6 +1738,20 @@ class TaskConfig:
                 files_to_convert.append((f_path, "audio"))
         if not files_to_convert:
             return dl_path
+
+        stream_ordinals = None
+        if self.vt_audio_stream_mode == "select":
+            video_files = [f for f, t in files_to_convert if t == "video"]
+            if video_files:
+                from bot.modules.convert_audio_stream import get_convert_audio_stream_selection
+
+                stream_ordinals = await get_convert_audio_stream_selection(self, video_files[0])
+                if self.is_cancelled:
+                    return dl_path
+                if not stream_ordinals:
+                    files_to_convert = [(f, t) for f, t in files_to_convert if t != "video"]
+                    if not files_to_convert:
+                        return dl_path
 
         ffmpeg = FFMpeg(self)
         async with task_dict_lock:
@@ -1753,9 +1770,13 @@ class TaskConfig:
                     self.subname = ospath.basename(f_path)
                 if f_type == "video":
                     codec = aext or await get_audio_codec(f_path)
-                    res = await ffmpeg.convert_video_audio(f_path, codec, bitrate) if codec else False
+                    res = (
+                        await ffmpeg.convert_video_audio(f_path, codec, bitrate, channel, stream_ordinals)
+                        if codec
+                        else False
+                    )
                 else:
-                    res = await ffmpeg.convert_audio(f_path, aext or ospath.splitext(f_path)[1].lstrip("."), bitrate)
+                    res = await ffmpeg.convert_audio(f_path, aext or ospath.splitext(f_path)[1].lstrip("."), bitrate, channel)
                 if self.is_cancelled:
                     return False
                 if res:
