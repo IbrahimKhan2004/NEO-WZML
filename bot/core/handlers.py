@@ -209,6 +209,9 @@ def add_handlers():
         CallbackQueryHandler(edit_remove_stream_selection, filters=regex("^rss"))
     )
     TgClient.bot.add_handler(
+        CallbackQueryHandler(edit_convert_audio_stream_selection, filters=regex("^cas"))
+    )
+    TgClient.bot.add_handler(
         CallbackQueryHandler(edit_audio_swap_selection, filters=regex("^aso"))
     )
     TgClient.bot.add_handler(
