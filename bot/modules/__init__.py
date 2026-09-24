@@ -33,6 +33,7 @@ from .audio_swap import edit_audio_swap_selection
 from .subtitle_swap import edit_subtitle_swap_selection
 from .extract_stream import edit_extract_stream_selection
 from .remove_stream import edit_remove_stream_selection
+from .convert_audio_stream import edit_convert_audio_stream_selection
 from .rss import get_rss_menu, rss_listener
 from .search import torrent_search, torrent_search_update, initiate_search_tools
 from .services import start, start_cb, login, ping, log, log_cb
@@ -112,6 +113,7 @@ __all__ = [
     "edit_subtitle_swap_selection",
     "edit_extract_stream_selection",
     "edit_remove_stream_selection",
+    "edit_convert_audio_stream_selection",
     "ytdl",
     "ytdl_leech",
     "speedtest",
