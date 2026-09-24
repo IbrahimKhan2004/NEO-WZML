@@ -120,6 +120,8 @@ class StorageToUpload:
                 if resp.status not in [200, 201]:
                     raise Exception(f"Init Failed: {await resp.text()}")
                 init_res = await resp.json()
+                if not init_res.get("success", True):
+                    raise Exception(f"Init Error: {init_res.get('error', 'Unknown error')}")
 
         owner_token = init_res.get("owner_token")
         with ProgressFileReader(
@@ -203,7 +205,10 @@ class StorageToUpload:
                         if resp.status not in [200, 201]:
                             raise Exception(f"Complete Failed: {await resp.text()}")
             else:
-                await self.__put_part(init_res["upload_url"], file)
+                upload_url = init_res.get("upload_url")
+                if not upload_url:
+                    raise Exception(f"Init Response Missing upload_url: {init_res}")
+                await self.__put_part(upload_url, file)
 
         confirm_body = {
             "filename": file_name,
