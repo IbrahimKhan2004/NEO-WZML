@@ -815,7 +815,7 @@ class FFMpeg:
             )
         return False
 
-    async def convert_audio(self, audio_file, ext, bitrate=None):
+    async def convert_audio(self, audio_file, ext, bitrate=None, channel=None):
         self.clear()
         self._total_time = (await get_media_info(audio_file))[0]
         base_name = ospath.splitext(audio_file)[0]
@@ -839,6 +839,8 @@ class FFMpeg:
         ]
         if bitrate:
             cmd += ["-b:a", bitrate]
+        if channel:
+            cmd += ["-ac", str(channel)]
         cmd += ["-ignore_unknown"]
         cmd.append(output)
         if self._listener.is_cancelled:
@@ -868,7 +870,7 @@ class FFMpeg:
                 await remove(output)
         return False
 
-    async def convert_video_audio(self, video_file, codec, bitrate=None):
+    async def convert_video_audio(self, video_file, codec, bitrate=None, channel=None, stream_ordinals=None):
         self.clear()
         self._total_time = (await get_media_info(video_file))[0]
         base_name, vext = ospath.splitext(video_file)
@@ -893,13 +895,21 @@ class FFMpeg:
             "-ignore_unknown",
             "-c",
             "copy",
-            "-c:a",
-            encoder,
-            "-threads",
-            f"{threads}",
         ]
-        if bitrate:
-            cmd += ["-b:a", bitrate]
+        if stream_ordinals:
+            for o in stream_ordinals:
+                cmd += [f"-c:a:{o}", encoder]
+                if bitrate:
+                    cmd += [f"-b:a:{o}", bitrate]
+                if channel:
+                    cmd += [f"-ac:{o}", str(channel)]
+        else:
+            cmd += ["-c:a", encoder]
+            if bitrate:
+                cmd += ["-b:a", bitrate]
+            if channel:
+                cmd += ["-ac", str(channel)]
+        cmd += ["-threads", f"{threads}"]
         cmd.append(output)
         if self._listener.is_cancelled:
             return False
