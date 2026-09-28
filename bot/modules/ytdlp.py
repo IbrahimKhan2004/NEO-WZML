@@ -418,7 +418,7 @@ class YtDlp(TaskListener):
         self.audio_metadata_dict = self.audio_metadata_dict.copy()
         self.video_metadata_dict = self.video_metadata_dict.copy()
         self.subtitle_metadata_dict = self.subtitle_metadata_dict.copy()
-        if meta := args["-meta"]:
+        if (meta := args["-meta"]) and not self.metacore:
             self.metadata_dict = self.metadata_processor.merge_dicts(
                 self.default_metadata_dict, self.metadata_processor.parse_string(meta)
             )

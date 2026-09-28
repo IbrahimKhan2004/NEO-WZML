@@ -210,7 +210,7 @@ class Uphoster(TaskListener):
         self.audio_metadata_dict = self.audio_metadata_dict.copy()
         self.video_metadata_dict = self.video_metadata_dict.copy()
         self.subtitle_metadata_dict = self.subtitle_metadata_dict.copy()
-        if args["-meta"]:
+        if args["-meta"] and not self.metacore:
             meta = self.metadata_processor.parse_string(args["-meta"])
             self.metadata_dict = self.metadata_processor.merge_dicts(
                 self.metadata_dict, meta

@@ -90,7 +90,7 @@ NEO-WZML is built for people who move a lot of files through Telegram and cloud 
 | `-mv` | Merge folder videos into one `.mkv` with FFmpeg concat |
 | `-ff` | Run configured FFmpeg command presets |
 | `-ss` / `-sv` | Generate screenshots or sample videos |
-| Metadata tools | Apply title, audio, video, and subtitle metadata |
+| Metadata tools | MetaCore independent stream tagging, global title, audio, video, and subtitle metadata |
 | Filename rules | Prefixes, suffixes, regex swaps, and cleanup rules |
 
 ---
