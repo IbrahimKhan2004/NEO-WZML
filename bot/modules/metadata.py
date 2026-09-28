@@ -93,6 +93,8 @@ async def apply_metadata_title(
                 "-hide_banner",
                 "-loglevel",
                 "error",
+                "-progress",
+                "pipe:1",
                 "-i",
                 file_path,
             ]
