@@ -4,6 +4,7 @@ from os.path import basename, splitext
 from re import compile as re_compile, sub
 from pycountry import languages
 from bot.helper.ext_utils.media_utils import get_streams
+from bot.helper.ext_utils.native_lang import get_native_lang
 
 
 class MetadataProcessor:
@@ -38,7 +39,9 @@ class MetadataProcessor:
             "basename": bname,
             "extension": ext.lstrip("."),
             "audiolang": "unknown",
+            "audiolang_native": "unknown",
             "sublang": "none",
+            "sublang_native": "none",
             "year": "",
             "vcodec": "",
             "acodec": "",
@@ -50,20 +53,24 @@ class MetadataProcessor:
                 ctype = s.get("codec_type", "").lower()
                 slang = s.get("tags", {}).get("language", "unknown")
                 full_lang = self.convert_lang_code(slang)
+                native_lang = get_native_lang(slang, full_lang)
                 entry = {
                     "index": s.get("index", 0),
                     "language": slang,
                     "full_language": full_lang,
+                    "native_language": native_lang,
                     "codec": s.get("codec_name", ""),
                 }
                 if ctype == "audio":
                     self.audio_streams.append(entry)
                     if self.vars["audiolang"] == "unknown" and slang != "und":
                         self.vars["audiolang"] = full_lang
+                        self.vars["audiolang_native"] = native_lang
                 elif ctype == "subtitle":
                     self.subtitle_streams.append(entry)
                     if self.vars["sublang"] == "none" and slang != "und":
                         self.vars["sublang"] = full_lang
+                        self.vars["sublang_native"] = native_lang
                 elif (
                     ctype == "video"
                     and not self.vars["vcodec"]
@@ -80,9 +87,9 @@ class MetadataProcessor:
         ).strip(" ([-")
         self.vars.update(
             a_lang=self.vars["audiolang"],
-            a_lang_native=self.vars["audiolang"],
+            a_lang_native=self.vars["audiolang_native"],
             s_lang=self.vars["sublang"],
-            s_lang_native=self.vars["sublang"],
+            s_lang_native=self.vars["sublang_native"],
         )
 
     @staticmethod
@@ -118,6 +125,7 @@ class MetadataProcessor:
         metadata_dict,
         stream_lang=None,
         full_lang=None,
+        native_lang=None,
         stream_type="audio",
         codec="",
     ):
@@ -126,10 +134,16 @@ class MetadataProcessor:
         vars_with_stream = self.vars.copy()
         if stream_lang and stream_lang != "unknown":
             key = "audiolang" if stream_type == "audio" else "sublang"
-            vars_with_stream[key] = full_lang or self.convert_lang_code(stream_lang)
+            f_lang = full_lang or self.convert_lang_code(stream_lang)
+            n_lang = native_lang or get_native_lang(stream_lang, f_lang)
+            vars_with_stream[key] = f_lang
+            vars_with_stream[f"{key}_native"] = n_lang
         p = "a" if stream_type == "audio" else "s"
         lang = vars_with_stream["audiolang" if p == "a" else "sublang"]
-        vars_with_stream.update({f"{p}_lang": lang, f"{p}_lang_native": lang})
+        native = vars_with_stream.get(
+            f"{'audiolang' if p == 'a' else 'sublang'}_native", lang
+        )
+        vars_with_stream.update({f"{p}_lang": lang, f"{p}_lang_native": native})
         if codec:
             vars_with_stream[f"{p}codec"] = codec
         return {
@@ -150,6 +164,7 @@ class MetadataProcessor:
                     audio_metadata_dict,
                     s["language"],
                     s["full_language"],
+                    s.get("native_language"),
                     "audio",
                     s["codec"],
                 ),
@@ -165,6 +180,7 @@ class MetadataProcessor:
                     subtitle_metadata_dict,
                     s["language"],
                     s["full_language"],
+                    s.get("native_language"),
                     "subtitle",
                     s["codec"],
                 ),
