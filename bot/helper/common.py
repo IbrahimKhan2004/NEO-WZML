@@ -103,29 +103,47 @@ class TaskConfig:
         self.user_id = self.user.id
         self.user_dict = user_data.get(self.user_id, {})
         self.metadata_processor = MetadataProcessor()
-        for k in ("METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"):
-            v = self.user_dict.get(k, {})
-            if k == "METADATA":
-                k = "default_metadata"
-            if isinstance(v, dict):
-                setattr(self, f"{k.lower()}_dict", v)
-            elif isinstance(v, str):
-                setattr(
-                    self, f"{k.lower()}_dict", self.metadata_processor.parse_string(v)
-                )
-            else:
-                setattr(self, f"{k.lower()}_dict", {})
-        mf = self.user_dict.get("META_FIELDS") or {}
-        for a, t, f in (
-            ("default_metadata", "title", "META_VIDEO_TITLE"),
-            ("default_metadata", "author", "META_VIDEO_AUTHOR"),
-            ("video_metadata", "title", "META_VIDEO_TITLE"),
-            ("audio_metadata", "title", "META_AUDIO_TITLE"),
-            ("subtitle_metadata", "title", "META_SUBTITLE_TITLE"),
-        ):
-            if mf.get(f):
-                setattr(self, f"{a}_dict", {**getattr(self, f"{a}_dict"), t: mf[f]})
-        self.default_metadata_dict = {**self.default_metadata_dict, **mf.get("META_CUSTOM", {})}
+        mcore_enable = self.user_dict.get("META_CORE_ENABLE", False)
+        mcore_fields = self.user_dict.get("META_CORE_FIELDS") or {}
+        if mcore_enable and mcore_fields:
+            self.default_metadata_dict = {}
+            if mcore_fields.get("META_VIDEO_TITLE"):
+                self.default_metadata_dict["title"] = mcore_fields["META_VIDEO_TITLE"]
+            if mcore_fields.get("META_VIDEO_AUTHOR"):
+                self.default_metadata_dict["author"] = mcore_fields["META_VIDEO_AUTHOR"]
+            if mcore_fields.get("META_CUSTOM"):
+                custom_val = mcore_fields["META_CUSTOM"]
+                if isinstance(custom_val, dict):
+                    self.default_metadata_dict.update(custom_val)
+                elif isinstance(custom_val, str):
+                    self.default_metadata_dict.update(self.metadata_processor.parse_string(custom_val))
+            self.video_metadata_dict = {"title": mcore_fields["META_VIDEO_TITLE"]} if mcore_fields.get("META_VIDEO_TITLE") else {}
+            self.audio_metadata_dict = {"title": mcore_fields["META_AUDIO_TITLE"]} if mcore_fields.get("META_AUDIO_TITLE") else {}
+            self.subtitle_metadata_dict = {"title": mcore_fields["META_SUBTITLE_TITLE"]} if mcore_fields.get("META_SUBTITLE_TITLE") else {}
+        else:
+            for k in ("METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"):
+                v = self.user_dict.get(k, {})
+                if k == "METADATA":
+                    k = "default_metadata"
+                if isinstance(v, dict):
+                    setattr(self, f"{k.lower()}_dict", v)
+                elif isinstance(v, str):
+                    setattr(
+                        self, f"{k.lower()}_dict", self.metadata_processor.parse_string(v)
+                    )
+                else:
+                    setattr(self, f"{k.lower()}_dict", {})
+            mf = self.user_dict.get("META_FIELDS") or {}
+            for a, t, f in (
+                ("default_metadata", "title", "META_VIDEO_TITLE"),
+                ("default_metadata", "author", "META_VIDEO_AUTHOR"),
+                ("video_metadata", "title", "META_VIDEO_TITLE"),
+                ("audio_metadata", "title", "META_AUDIO_TITLE"),
+                ("subtitle_metadata", "title", "META_SUBTITLE_TITLE"),
+            ):
+                if mf.get(f):
+                    setattr(self, f"{a}_dict", {**getattr(self, f"{a}_dict"), t: mf[f]})
+            self.default_metadata_dict = {**self.default_metadata_dict, **mf.get("META_CUSTOM", {})}
         self.dir = f"{DOWNLOAD_DIR}{self.mid}"
         self.up_dir = ""
         self.link = ""

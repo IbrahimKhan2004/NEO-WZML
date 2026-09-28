@@ -1233,6 +1233,11 @@ async def get_user_settings(from_user, stype="main"):
             ffc_count = 0
             ffc_preview = "None"
 
+        buttons.data_button("MetaCore", f"userset {user_id} metacore")
+        metacore_enabled = user_dict.get("META_CORE_ENABLE", False)
+        metacore_fields = user_dict.get("META_CORE_FIELDS", {})
+        display_metacore_val = f"<b>{'Enabled' if metacore_enabled else 'Disabled'}</b> ({len(metacore_fields)} field(s))"
+
         buttons.data_button("Metadata", f"userset {user_id} menu METADATA")
         metadata_setting = user_dict.get("METADATA")
         display_meta_val = "<b>Not Set</b>"
@@ -1275,6 +1280,7 @@ async def get_user_settings(from_user, stype="main"):
 <i>Configure FFmpeg commands and metadata tagging for media files.</i>
 
  • <b>FFmpeg Presets:</b> {ffc_count} configured (<code>{ffc_preview}</code>)
+ • <b>MetaCore Mode:</b> {display_metacore_val}
  • <b>Global Metadata:</b> {display_meta_val}
  • <b>Audio Metadata:</b> {display_audio_meta}
  • <b>Video Metadata:</b> {display_video_meta}
@@ -1282,6 +1288,34 @@ async def get_user_settings(from_user, stype="main"):
  • <b>Merge Video:</b> {'Enabled' if merge_video_setting else 'Disabled'}
 
 <blockquote><i>💡 Metadata is applied to files during upload. Use dynamic variables like {{filename}}, {{basename}}, {{audiolang}}.</i></blockquote>"""
+
+    elif stype == "metacore":
+        mcore_fields = user_dict.get("META_CORE_FIELDS", {})
+        mcore_enable = user_dict.get("META_CORE_ENABLE", False)
+
+        for k, n in meta_fields.items():
+            buttons.data_button(f"Set {n}", f"userset {user_id} set_mcore {k}")
+
+        if mcore_enable:
+            buttons.data_button("Disable MetaCore", f"userset {user_id} tog META_CORE_ENABLE f", "header")
+        else:
+            buttons.data_button("Enable MetaCore", f"userset {user_id} tog META_CORE_ENABLE t", "header")
+
+        if mcore_fields:
+            buttons.data_button("Reset Fields", f"userset {user_id} reset META_CORE_FIELDS", "footer")
+
+        buttons.data_button("Back", f"userset {user_id} back ffset", "footer")
+        buttons.data_button("Close", f"userset {user_id} close", "footer")
+        btns = buttons.build_menu(2)
+
+        text = f"<b>MetaCore Settings for {user_name}</b>\n\n"
+        text += f" • <b>MetaCore Mode:</b> <b>{'Enabled' if mcore_enable else 'Disabled'}</b>\n\n"
+        for k, n in meta_fields.items():
+            v = mcore_fields.get(k)
+            v = " | ".join(f"{a}={b}" for a, b in v.items()) if isinstance(v, dict) else v
+            text += f" • <b>{n}:</b> <code>{escape(v)}</code>\n" if v else f" • <b>{n}:</b> <i>Not Set</i>\n"
+
+        text += "\n<blockquote><i>💡 When MetaCore is Enabled & set, it operates independently and overrides standard global metadata.</i></blockquote>"
 
     elif stype == "advanced":
         buttons.data_button(
@@ -1449,6 +1483,19 @@ async def remove_one(_, message, option, rfunc):
     for name in names:
         if name in user_dict[option]:
             del user_dict[option][name]
+    await delete_message(message)
+    await rfunc()
+    await database.update_user_data(user_id)
+
+
+@new_task
+async def set_mcore_option(_, message, option, rfunc):
+    user_id = message.from_user.id
+    handler_dict[user_id] = False
+    value = message.text
+    mcore_fields = user_data.get(user_id, {}).get("META_CORE_FIELDS", {})
+    mcore_fields[option] = value
+    update_user_ldata(user_id, "META_CORE_FIELDS", mcore_fields)
     await delete_message(message)
     await rfunc()
     await database.update_user_data(user_id)
@@ -1813,6 +1860,7 @@ async def edit_user_settings(client, query):
         "pixeldrain",
         "storageto",
         "ffset",
+        "metacore",
         "advanced",
         "gdrive",
         "rclone",
@@ -1899,6 +1947,8 @@ async def edit_user_settings(client, query):
             back_to = "general"
         elif data[3] == "MERGE_VIDEO":
             back_to = "ffset"
+        elif data[3] == "META_CORE_ENABLE":
+            back_to = "metacore"
         else:
             back_to = "leech"
         await update_user_settings(query, stype=back_to)
@@ -2089,25 +2139,34 @@ async def edit_user_settings(client, query):
  • <b>No TDs configured yet.</b>"""
 
         await edit_message(message, text, buttons.build_menu(2))
-    elif data[2] in ["set", "addone", "rmone"]:
+    elif data[2] in ["set", "set_mcore", "addone", "rmone"]:
         await query.answer()
         buttons = ButtonMaker()
-        if data[2] == "set":
+        if data[2] == "set_mcore":
+            text = user_settings_text[data[3]][2]
+            func = set_mcore_option
+            rfunc = partial(update_user_settings, query, "metacore")
+        elif data[2] == "set":
             text = user_settings_text[data[3]][2]
             func = set_option
+            rfunc = partial(get_menu, data[3], message, user_id)
         elif data[2] == "addone":
             text = f"Add one or more string key and value to {data[3]}. Example: {{'key 1': 62625261, 'key 2': 'value 2'}}. Timeout: 60 sec"
             func = add_one
         elif data[2] == "rmone":
             text = f"Remove one or more key from {data[3]}. Example: key 1/key2/key 3. Timeout: 60 sec"
             func = remove_one
-        buttons.data_button("Stop", f"userset {user_id} menu {data[3]} stop")
-        buttons.data_button("Back", f"userset {user_id} menu {data[3]}", "footer")
-        buttons.data_button("Close", f"userset {user_id} close", "footer")
+        if data[2] == "set_mcore":
+            buttons.data_button("Stop", f"userset {user_id} metacore stop")
+            buttons.data_button("Back", f"userset {user_id} metacore", "footer")
+            buttons.data_button("Close", f"userset {user_id} close", "footer")
+        else:
+            buttons.data_button("Stop", f"userset {user_id} menu {data[3]} stop")
+            buttons.data_button("Back", f"userset {user_id} menu {data[3]}", "footer")
+            buttons.data_button("Close", f"userset {user_id} close", "footer")
         await edit_message(
             message, message.text.html + "\n\n" + text, buttons.build_menu(1)
         )
-        rfunc = partial(get_menu, data[3], message, user_id)
         pfunc = partial(func, option=data[3], rfunc=rfunc)
         await event_handler(client, query, pfunc, rfunc)
     elif data[2] == "remove":
@@ -2138,7 +2197,10 @@ async def edit_user_settings(client, query):
         await query.answer("Reset Done!", show_alert=True)
         user_dict.pop(data[3], None)
         await database.update_user_data(user_id)
-        await get_menu(data[3], message, user_id)
+        if data[3] == "META_CORE_FIELDS":
+            await update_user_settings(query, "metacore")
+        else:
+            await get_menu(data[3], message, user_id)
     elif data[2] == "confirm_reset_all":
         await query.answer()
         buttons = ButtonMaker()
