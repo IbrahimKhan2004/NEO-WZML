@@ -115,6 +115,17 @@ class TaskConfig:
                 )
             else:
                 setattr(self, f"{k.lower()}_dict", {})
+        mf = self.user_dict.get("META_FIELDS") or {}
+        for a, t, f in (
+            ("default_metadata", "title", "META_VIDEO_TITLE"),
+            ("default_metadata", "author", "META_VIDEO_AUTHOR"),
+            ("video_metadata", "title", "META_VIDEO_TITLE"),
+            ("audio_metadata", "title", "META_AUDIO_TITLE"),
+            ("subtitle_metadata", "title", "META_SUBTITLE_TITLE"),
+        ):
+            if mf.get(f):
+                setattr(self, f"{a}_dict", {**getattr(self, f"{a}_dict"), t: mf[f]})
+        self.default_metadata_dict = {**self.default_metadata_dict, **mf.get("META_CUSTOM", {})}
         self.dir = f"{DOWNLOAD_DIR}{self.mid}"
         self.up_dir = ""
         self.link = ""
