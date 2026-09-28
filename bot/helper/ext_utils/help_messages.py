@@ -678,7 +678,7 @@ Apply custom metadata to media files using pipe (|) separator.
 • <code>{a_lang}</code> <code>{s_lang}</code> - Per-stream language (English name)
 
 <b>Per-Stream Metadata:</b>
-FF Media Settings > Metadata also has Set Video Title, Video Author, Audio Title, Subtitle Title and Custom Field.
+FF Media Settings > MetaCore has Set Video Title, Video Author, Audio Title, Subtitle Title and Custom Field.
 Set different metadata for audio/video/subtitle streams in User Settings > FFmpeg Settings:
 • <b>Audio Metadata:</b> Applied to each audio stream
 • <b>Video Metadata:</b> Applied to video streams  
