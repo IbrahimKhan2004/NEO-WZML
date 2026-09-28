@@ -68,6 +68,13 @@ ffset_options = [
     "SUBTITLE_METADATA",
     "MERGE_VIDEO",
 ]
+meta_fields = {
+    "META_VIDEO_TITLE": "Video Title",
+    "META_VIDEO_AUTHOR": "Video Author",
+    "META_AUDIO_TITLE": "Audio Title",
+    "META_SUBTITLE_TITLE": "Subtitle Title",
+    "META_CUSTOM": "Custom Field",
+}
 advanced_options = [
     "EXCLUDED_EXTENSIONS",
 
@@ -386,6 +393,93 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 
 ⏱ <b>Time Left:</b> <code>60 sec</code>""",
     ),
+    "META_VIDEO_TITLE": (
+        "Video Title Field",
+        "Title tag for General info and the primary video stream.",
+        """<b>Settings: Video Title Field</b>
+
+Configure the title tag for General info and the primary video stream.
+
+<b>Placeholders:</b>
+• <code>{filename}</code> Current file name
+• <code>{basename}</code> Name without dot extension
+• <code>{extension}</code> Extension of a Video
+• <code>{title}</code> Name parsed without year
+• <code>{year}</code> Year extracted from name
+• <code>{vcodec}</code> Video codec of the stream (e.g. h264)
+
+⏱ <b>Time Left:</b> <code>60 sec</code>""",
+    ),
+    "META_VIDEO_AUTHOR": (
+        "Video Author Field",
+        "Author tag for General info.",
+        """<b>Settings: Video Author Field</b>
+
+Configure the author tag for General info.
+
+<b>Placeholders:</b>
+• <code>{filename}</code> Current file name
+• <code>{basename}</code> Name without dot extension
+• <code>{extension}</code> Extension of a Video
+• <code>{title}</code> Name parsed without year
+• <code>{year}</code> Year extracted from name
+• <code>{vcodec}</code> Video codec of the stream (e.g. h264)
+
+⏱ <b>Time Left:</b> <code>60 sec</code>""",
+    ),
+    "META_AUDIO_TITLE": (
+        "Audio Title Field",
+        "Title tag for individual audio streams.",
+        """<b>Settings: Audio Title Field</b>
+
+Configure the title tag for individual audio streams.
+
+<b>Placeholders:</b>
+• <code>{filename}</code> Current file name
+• <code>{basename}</code> Name without dot extension
+• <code>{a_lang}</code> Extracted audio language (e.g. English)
+• <code>{a_lang_native}</code> Extracted audio language native name (e.g. हिन्दी)
+• <code>{acodec}</code> Audio codec of the stream (e.g. aac)
+
+⏱ <b>Time Left:</b> <code>60 sec</code>""",
+    ),
+    "META_SUBTITLE_TITLE": (
+        "Subtitle Title Field",
+        "Title tag for individual subtitle streams.",
+        """<b>Settings: Subtitle Title Field</b>
+
+Configure the title tag for individual subtitle streams.
+
+<b>Placeholders:</b>
+• <code>{filename}</code> Current file name
+• <code>{basename}</code> Name without dot extension
+• <code>{s_lang}</code> Extracted subtitle language (e.g. English)
+• <code>{s_lang_native}</code> Extracted subtitle language native name (e.g. हिन्दी)
+• <code>{scodec}</code> Subtitle codec of the stream (e.g. srt)
+
+⏱ <b>Time Left:</b> <code>60 sec</code>""",
+    ),
+    "META_CUSTOM": (
+        "Custom Field",
+        "Custom global metadata key and value tags.",
+        """<b>Settings: Custom Field</b>
+
+Configure custom global metadata key and value tags.
+
+<b>Format:</b> <code>key=value</code>
+To add multiple fields, separate them with a pipe <code>|</code> character.
+
+<b>Placeholders:</b>
+• <code>{filename}</code> Current file name
+• <code>{basename}</code> Name without dot extension
+• <code>{title}</code> Name parsed without year
+• <code>{year}</code> Year extracted from name
+
+<b>Example:</b>
+<code>copyright=My Channel | description=Movie: {title} | date={year}</code>
+
+⏱ <b>Time Left:</b> <code>60 sec</code>""",
+    ),
     "USER_COOKIE_FILE": (
         "File",
         "User's YT-DLP Cookie File to authenticate access to websites and youtube.",
@@ -626,6 +720,7 @@ async def get_user_settings(from_user, stype="main"):
                 "EQUAL_SPLITS",
                 "STOP_DUPLICATE",
                 "DEFAULT_UPLOAD",
+                "META_FIELDS",
             ]
         ):
             buttons.data_button(
@@ -1375,6 +1470,7 @@ async def set_option(_, message, option, rfunc):
         "AUDIO_METADATA",
         "VIDEO_METADATA",
         "SUBTITLE_METADATA",
+        "META_CUSTOM",
     ]:
         parsed_metadata_dict = {}
         if value and isinstance(value, str):
@@ -1426,6 +1522,9 @@ async def set_option(_, message, option, rfunc):
         else:
             await send_message(message, "It must be dict!")
             return
+    if option in meta_fields:
+        value = {**user_data.get(user_id, {}).get("META_FIELDS", {}), option: value}
+        option = "META_FIELDS"
     update_user_ldata(user_id, option, value)
     await delete_message(message)
     await rfunc()
@@ -1524,6 +1623,7 @@ async def set_user_td(_, message, user_id, rfunc):
 
 async def get_menu(option, message, user_id):
     handler_dict[user_id] = False
+    option = "METADATA" if option.startswith("META_") else option
     user_dict = user_data.get(user_id, {})
 
     file_dict = {
@@ -1542,6 +1642,11 @@ async def get_menu(option, message, user_id):
         key = "file"
     else:
         key = "set"
+    if option == "METADATA":
+        for k, n in meta_fields.items():
+            buttons.data_button(f"Set {n}", f"userset {user_id} set {k}")
+        if user_dict.get("META_FIELDS"):
+            buttons.data_button("Reset Fields", f"userset {user_id} reset META_FIELDS")
     buttons.data_button(
         "Change" if user_dict.get(option, False) else "Set",
         f"userset {user_id} {key} {option}",
@@ -1601,6 +1706,16 @@ async def get_menu(option, message, user_id):
 
     display_name = fname_dict.get(option, option)
     text = f"✦ <b><u>{display_name} Settings :</u></b>\n\n"
+
+    if option == "METADATA":
+        mf = user_dict.get("META_FIELDS", {})
+        user = await TgClient.bot.get_users(user_id)
+        text += f"<b>Metadata Setting for {user.mention(style='html')}</b>\n\n"
+        for k, n in meta_fields.items():
+            v = mf.get(k)
+            v = " | ".join(f"{a}={b}" for a, b in v.items()) if isinstance(v, dict) else v
+            text += f"{n} is <code>{escape(v)}</code>\n" if v else f"{n} is <b>Not Set</b>\n"
+        text += "\n"
 
     text += f"➜ <b>Current Value :</b> {val if val else '<i>Not Set</i>'}\n\n"
 
