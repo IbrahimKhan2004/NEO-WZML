@@ -1,13 +1,13 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from os.path import basename, splitext
-from re import compile as re_compile
+from re import compile as re_compile, sub
 from pycountry import languages
 from bot.helper.ext_utils.media_utils import get_streams
 
 
 class MetadataProcessor:
-    _year_pattern = re_compile(r"\b(19|20)\d{2}\b")
+    _year_pattern = re_compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
     _sanitize_pattern = re_compile(r'[<>:"/\\?*]')
 
     def __init__(self):
@@ -39,6 +39,10 @@ class MetadataProcessor:
             "extension": ext.lstrip("."),
             "audiolang": "unknown",
             "sublang": "none",
+            "year": "",
+            "vcodec": "",
+            "acodec": "",
+            "scodec": "",
         }
         self.audio_streams, self.subtitle_streams = [], []
         try:
@@ -50,6 +54,7 @@ class MetadataProcessor:
                     "index": s.get("index", 0),
                     "language": slang,
                     "full_language": full_lang,
+                    "codec": s.get("codec_name", ""),
                 }
                 if ctype == "audio":
                     self.audio_streams.append(entry)
@@ -59,11 +64,26 @@ class MetadataProcessor:
                     self.subtitle_streams.append(entry)
                     if self.vars["sublang"] == "none" and slang != "und":
                         self.vars["sublang"] = full_lang
+                elif (
+                    ctype == "video"
+                    and not self.vars["vcodec"]
+                    and not s.get("disposition", {}).get("attached_pic")
+                ):
+                    self.vars["vcodec"] = s.get("codec_name", "")
         except Exception:
             pass
         m = self._year_pattern.findall(bname)
         if m:
             self.vars["year"] = m[-1]
+        self.vars["title"] = sub(
+            r"[._]+", " ", bname[: bname.rfind(m[-1])] if m else bname
+        ).strip(" ([-")
+        self.vars.update(
+            a_lang=self.vars["audiolang"],
+            a_lang_native=self.vars["audiolang"],
+            s_lang=self.vars["sublang"],
+            s_lang_native=self.vars["sublang"],
+        )
 
     @staticmethod
     def parse_string(metadata_str):
@@ -94,7 +114,12 @@ class MetadataProcessor:
         return {**(default_dict or {}), **(cmd_dict or {})}
 
     def apply_vars_to_stream(
-        self, metadata_dict, stream_lang=None, full_lang=None, stream_type="audio"
+        self,
+        metadata_dict,
+        stream_lang=None,
+        full_lang=None,
+        stream_type="audio",
+        codec="",
     ):
         if not isinstance(metadata_dict, dict):
             return {}
@@ -102,6 +127,11 @@ class MetadataProcessor:
         if stream_lang and stream_lang != "unknown":
             key = "audiolang" if stream_type == "audio" else "sublang"
             vars_with_stream[key] = full_lang or self.convert_lang_code(stream_lang)
+        p = "a" if stream_type == "audio" else "s"
+        lang = vars_with_stream["audiolang" if p == "a" else "sublang"]
+        vars_with_stream.update({f"{p}_lang": lang, f"{p}_lang_native": lang})
+        if codec:
+            vars_with_stream[f"{p}codec"] = codec
         return {
             self.sanitize(k): (
                 str(v).format(**vars_with_stream) if isinstance(v, str) else str(v)
@@ -117,7 +147,11 @@ class MetadataProcessor:
             {
                 "index": s["index"],
                 "metadata": self.apply_vars_to_stream(
-                    audio_metadata_dict, s["language"], s["full_language"], "audio"
+                    audio_metadata_dict,
+                    s["language"],
+                    s["full_language"],
+                    "audio",
+                    s["codec"],
                 ),
             }
             for s in self.audio_streams
@@ -132,6 +166,7 @@ class MetadataProcessor:
                     s["language"],
                     s["full_language"],
                     "subtitle",
+                    s["codec"],
                 ),
             }
             for s in self.subtitle_streams
