@@ -102,6 +102,8 @@ async def apply_metadata_title(
             v, a, s = 0, 0, 0
             for stream in streams:
                 idx, typ = stream["index"], stream["codec_type"]
+                if stream.get("disposition", {}).get("attached_pic"):
+                    continue
                 maps += ["-map", f"0:{idx}"]
                 if typ == "video":
                     maps += [f"-c:v:{v}", "copy"]
