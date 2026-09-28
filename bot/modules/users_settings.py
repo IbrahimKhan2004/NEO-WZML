@@ -1788,7 +1788,7 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
         elif time() - update_time > 8 and handler_dict[user_id]:
             update_time = time()
             msg = await client.get_messages(query.message.chat.id, query.message.id)
-            text = msg.text.split("\n")
+            text = msg.text.html.split("\n")
             text[-1] = (
                 f" • <b>Time Left:</b> <code>{round(60 - (time() - start_time), 2)} sec</code>"
             )
