@@ -673,8 +673,12 @@ Apply custom metadata to media files using pipe (|) separator.
 • <code>{audiolang}</code> - Audio language (auto-detected or English)
 • <code>{sublang}</code> - Subtitle language (auto-detected or none)
 • <code>{year}</code> - Year extracted from filename
+• <code>{title}</code> - Name parsed without year
+• <code>{vcodec}</code> <code>{acodec}</code> <code>{scodec}</code> - Stream codecs
+• <code>{a_lang}</code> <code>{s_lang}</code> - Per-stream language (English name)
 
 <b>Per-Stream Metadata:</b>
+FF Media Settings > Metadata also has Set Video Title, Video Author, Audio Title, Subtitle Title and Custom Field.
 Set different metadata for audio/video/subtitle streams in User Settings > FFmpeg Settings:
 • <b>Audio Metadata:</b> Applied to each audio stream
 • <b>Video Metadata:</b> Applied to video streams  
