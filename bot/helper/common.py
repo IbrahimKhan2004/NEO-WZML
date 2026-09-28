@@ -103,29 +103,30 @@ class TaskConfig:
         self.user_id = self.user.id
         self.user_dict = user_data.get(self.user_id, {})
         self.metadata_processor = MetadataProcessor()
-        for k in ("METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"):
-            v = self.user_dict.get(k, {})
-            if k == "METADATA":
-                k = "default_metadata"
-            if isinstance(v, dict):
-                setattr(self, f"{k.lower()}_dict", v)
-            elif isinstance(v, str):
-                setattr(
-                    self, f"{k.lower()}_dict", self.metadata_processor.parse_string(v)
-                )
-            else:
-                setattr(self, f"{k.lower()}_dict", {})
         mf = self.user_dict.get("META_FIELDS") or {}
-        for a, t, f in (
-            ("default_metadata", "title", "META_VIDEO_TITLE"),
-            ("default_metadata", "author", "META_VIDEO_AUTHOR"),
-            ("video_metadata", "title", "META_VIDEO_TITLE"),
-            ("audio_metadata", "title", "META_AUDIO_TITLE"),
-            ("subtitle_metadata", "title", "META_SUBTITLE_TITLE"),
-        ):
-            if mf.get(f):
-                setattr(self, f"{a}_dict", {**getattr(self, f"{a}_dict"), t: mf[f]})
-        self.default_metadata_dict = {**self.default_metadata_dict, **mf.get("META_CUSTOM", {})}
+        self.metacore = bool(mf)
+        if self.metacore:
+            self.default_metadata_dict = mf.get("META_CUSTOM", {}).copy() if isinstance(mf.get("META_CUSTOM"), dict) else {}
+            if mf.get("META_VIDEO_TITLE"):
+                self.default_metadata_dict["title"] = mf["META_VIDEO_TITLE"]
+            if mf.get("META_VIDEO_AUTHOR"):
+                self.default_metadata_dict["author"] = mf["META_VIDEO_AUTHOR"]
+            self.video_metadata_dict = {"title": mf["META_VIDEO_TITLE"]} if mf.get("META_VIDEO_TITLE") else {}
+            self.audio_metadata_dict = {"title": mf["META_AUDIO_TITLE"]} if mf.get("META_AUDIO_TITLE") else {}
+            self.subtitle_metadata_dict = {"title": mf["META_SUBTITLE_TITLE"]} if mf.get("META_SUBTITLE_TITLE") else {}
+        else:
+            for k in ("METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"):
+                v = self.user_dict.get(k, {})
+                if k == "METADATA":
+                    k = "default_metadata"
+                if isinstance(v, dict):
+                    setattr(self, f"{k.lower()}_dict", v)
+                elif isinstance(v, str):
+                    setattr(
+                        self, f"{k.lower()}_dict", self.metadata_processor.parse_string(v)
+                    )
+                else:
+                    setattr(self, f"{k.lower()}_dict", {})
         self.dir = f"{DOWNLOAD_DIR}{self.mid}"
         self.up_dir = ""
         self.link = ""

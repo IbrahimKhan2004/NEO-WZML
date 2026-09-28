@@ -62,6 +62,7 @@ rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL", "USER_TDS"]
 ffset_options = [
     "FFMPEG_CMDS",
+    "METACORE",
     "METADATA",
     "AUDIO_METADATA",
     "VIDEO_METADATA",
@@ -110,6 +111,7 @@ fname_dict = {
     "INDEX_URL": "Index URL",
     "USER_TDS": "User TDs",
     "FFMPEG_CMDS": "FFmpeg Commands",
+    "METACORE": "MetaCore",
     "METADATA": "Metadata",
     "AUDIO_METADATA": "Audio Metadata",
     "VIDEO_METADATA": "Video Metadata",
@@ -313,6 +315,11 @@ Example: {"format": "bv*+mergeall[vcodec=none]", "nocheckcertificate": True, "pl
 Check all yt-dlp api options from this <a href='https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L184'>FILE</a> or use this <a href='https://t.me/mltb_official_channel/177'>script</a> to convert cli arguments to api options.
 
 <i>Send dict of YT-DLP Options according to format.</i> \n • <b>Time Left:</b> <code>60 sec</code>""",
+    ),
+    "METACORE": (
+        "MetaCore Fields",
+        "Independent Metadata tagging for Video Title, Video Author, Audio Title, Subtitle Title, and Custom Fields.",
+        "",
     ),
     "FFMPEG_CMDS": (
         "Text",
@@ -1233,6 +1240,12 @@ async def get_user_settings(from_user, stype="main"):
             ffc_count = 0
             ffc_preview = "None"
 
+        buttons.data_button("MetaCore", f"userset {user_id} menu METACORE")
+        metacore_setting = user_dict.get("META_FIELDS")
+        display_metacore_val = "<b>Not Set</b>"
+        if isinstance(metacore_setting, dict) and metacore_setting:
+            display_metacore_val = f"<b>{len(metacore_setting)} field(s)</b>"
+
         buttons.data_button("Metadata", f"userset {user_id} menu METADATA")
         metadata_setting = user_dict.get("METADATA")
         display_meta_val = "<b>Not Set</b>"
@@ -1275,6 +1288,7 @@ async def get_user_settings(from_user, stype="main"):
 <i>Configure FFmpeg commands and metadata tagging for media files.</i>
 
  • <b>FFmpeg Presets:</b> {ffc_count} configured (<code>{ffc_preview}</code>)
+ • <b>MetaCore:</b> {display_metacore_val}
  • <b>Global Metadata:</b> {display_meta_val}
  • <b>Audio Metadata:</b> {display_audio_meta}
  • <b>Video Metadata:</b> {display_video_meta}
@@ -1623,7 +1637,7 @@ async def set_user_td(_, message, user_id, rfunc):
 
 async def get_menu(option, message, user_id):
     handler_dict[user_id] = False
-    option = "METADATA" if option.startswith("META_") else option
+    option = "METACORE" if option in ["METACORE", "META_FIELDS"] or option.startswith("META_") else option
     user_dict = user_data.get(user_id, {})
 
     file_dict = {
@@ -1642,15 +1656,16 @@ async def get_menu(option, message, user_id):
         key = "file"
     else:
         key = "set"
-    if option == "METADATA":
+    if option == "METACORE":
         for k, n in meta_fields.items():
             buttons.data_button(f"Set {n}", f"userset {user_id} set {k}")
         if user_dict.get("META_FIELDS"):
             buttons.data_button("Reset Fields", f"userset {user_id} reset META_FIELDS")
-    buttons.data_button(
-        "Change" if user_dict.get(option, False) else "Set",
-        f"userset {user_id} {key} {option}",
-    )
+    else:
+        buttons.data_button(
+            "Change" if user_dict.get(option, False) else "Set",
+            f"userset {user_id} {key} {option}",
+        )
     if user_dict.get(option, False):
         if option == "THUMBNAIL":
             buttons.data_button(
@@ -1707,19 +1722,18 @@ async def get_menu(option, message, user_id):
     display_name = fname_dict.get(option, option)
     text = f"✦ <b><u>{display_name} Settings :</u></b>\n\n"
 
-    if option == "METADATA":
+    if option == "METACORE":
         mf = user_dict.get("META_FIELDS", {})
         user = await TgClient.bot.get_users(user_id)
-        text += f"<b>Metadata Setting for {user.mention(style='html')}</b>\n\n"
+        text += f"<b>MetaCore Setting for {user.mention(style='html')}</b>\n\n"
         for k, n in meta_fields.items():
             v = mf.get(k)
             v = " | ".join(f"{a}={b}" for a, b in v.items()) if isinstance(v, dict) else v
             text += f"{n} is <code>{escape(v)}</code>\n" if v else f"{n} is <b>Not Set</b>\n"
         text += "\n"
-
-    text += f"➜ <b>Current Value :</b> {val if val else '<i>Not Set</i>'}\n\n"
-
-    text += f"➜ <b>Description :</b> <i>{user_settings_text[option][1]}</i>"
+    else:
+        text += f"➜ <b>Current Value :</b> {val if val else '<i>Not Set</i>'}\n\n"
+        text += f"➜ <b>Description :</b> <i>{user_settings_text[option][1]}</i>"
 
     if option in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
         text += """
@@ -1872,6 +1886,13 @@ async def edit_user_settings(client, query):
         await database.update_user_data(user_id)
         await update_user_settings(query, stype="caption_style")
     elif data[2] == "menu":
+        target_opt = data[3]
+        if target_opt in ["METACORE", "META_FIELDS"] or target_opt.startswith("META_"):
+            if any(user_dict.get(k) for k in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]):
+                return await query.answer("Reset Metadata first!", show_alert=True)
+        elif target_opt in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
+            if user_dict.get("META_FIELDS"):
+                return await query.answer("Reset MetaCore first!", show_alert=True)
         await query.answer()
         await get_menu(data[3], message, user_id)
     elif data[2] == "tog":
@@ -2090,6 +2111,13 @@ async def edit_user_settings(client, query):
 
         await edit_message(message, text, buttons.build_menu(2))
     elif data[2] in ["set", "addone", "rmone"]:
+        target_opt = data[3]
+        if target_opt in ["METACORE", "META_FIELDS"] or target_opt.startswith("META_"):
+            if any(user_dict.get(k) for k in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]):
+                return await query.answer("Reset Metadata first!", show_alert=True)
+        elif target_opt in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
+            if user_dict.get("META_FIELDS"):
+                return await query.answer("Reset MetaCore first!", show_alert=True)
         await query.answer()
         buttons = ButtonMaker()
         if data[2] == "set":
