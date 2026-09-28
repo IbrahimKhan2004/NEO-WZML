@@ -2130,8 +2130,9 @@ async def edit_user_settings(client, query):
         buttons.data_button("Stop", f"userset {user_id} menu {data[3]} stop")
         buttons.data_button("Back", f"userset {user_id} menu {data[3]}", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
+        prompt_msg = text if data[2] == "set" else message.text.html + "\n\n" + text
         await edit_message(
-            message, message.text.html + "\n\n" + text, buttons.build_menu(1)
+            message, prompt_msg, buttons.build_menu(1)
         )
         rfunc = partial(get_menu, data[3], message, user_id)
         pfunc = partial(func, option=data[3], rfunc=rfunc)
