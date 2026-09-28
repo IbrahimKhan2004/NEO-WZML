@@ -1,7 +1,7 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
 from os.path import basename, splitext
-from re import compile as re_compile, sub
+from re import IGNORECASE, compile as re_compile, escape, sub
 from pycountry import languages
 from bot.helper.ext_utils.media_utils import get_streams
 from bot.helper.ext_utils.native_lang import get_native_lang
@@ -10,6 +10,30 @@ from bot.helper.ext_utils.native_lang import get_native_lang
 class MetadataProcessor:
     _year_pattern = re_compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
     _sanitize_pattern = re_compile(r'[<>:"/\\?*]')
+
+    _sub_types = (
+        "Signs & Songs", "Signs", "Songs", "Dialogue",
+        "Full", "SDH", "Dubtitle", "Forced", "CC", "Commentary",
+    )
+    _sub_canon = {k.lower(): k for k in _sub_types}
+    _sub_type_pattern = re_compile(
+        rf"(?<!\w)({'|'.join(map(escape, _sub_types))})(?!\w)", IGNORECASE
+    )
+    _sub_bracket = re_compile(r"\[[^\[\]]+\]")
+
+    @classmethod
+    def sub_type(cls, title):
+        title = title or ""
+        b = [
+            x
+            for x in cls._sub_bracket.findall(title)
+            if cls._sub_type_pattern.search(x)
+        ]
+        if b:
+            return " ".join(b)
+        found = cls._sub_type_pattern.findall(title)
+        found = dict.fromkeys(cls._sub_canon[t.lower()] for t in found)
+        return " ".join(f"[{k}]" for k in found)
 
     def __init__(self):
         self.vars = {}
@@ -48,6 +72,7 @@ class MetadataProcessor:
             "scodec": "",
         }
         self.audio_streams, self.subtitle_streams = [], []
+        stype = ""
         try:
             for s in await get_streams(file_path) or []:
                 ctype = s.get("codec_type", "").lower()
@@ -60,6 +85,7 @@ class MetadataProcessor:
                     "full_language": full_lang,
                     "native_language": native_lang,
                     "codec": s.get("codec_name", ""),
+                    "sub_type": self.sub_type(s.get("tags", {}).get("title")),
                 }
                 if ctype == "audio":
                     self.audio_streams.append(entry)
@@ -71,6 +97,7 @@ class MetadataProcessor:
                     if self.vars["sublang"] == "none" and slang != "und":
                         self.vars["sublang"] = full_lang
                         self.vars["sublang_native"] = native_lang
+                        stype = entry["sub_type"]
                 elif (
                     ctype == "video"
                     and not self.vars["vcodec"]
@@ -88,8 +115,8 @@ class MetadataProcessor:
         self.vars.update(
             a_lang=self.vars["audiolang"],
             a_lang_native=self.vars["audiolang_native"],
-            s_lang=self.vars["sublang"],
-            s_lang_native=self.vars["sublang_native"],
+            s_lang=f'{self.vars["sublang"]} {stype}'.strip(),
+            s_lang_native=f'{self.vars["sublang_native"]} {stype}'.strip(),
         )
 
     @staticmethod
@@ -128,6 +155,7 @@ class MetadataProcessor:
         native_lang=None,
         stream_type="audio",
         codec="",
+        sub_type="",
     ):
         if not isinstance(metadata_dict, dict):
             return {}
@@ -143,7 +171,12 @@ class MetadataProcessor:
         native = vars_with_stream.get(
             f"{'audiolang' if p == 'a' else 'sublang'}_native", lang
         )
-        vars_with_stream.update({f"{p}_lang": lang, f"{p}_lang_native": native})
+        vars_with_stream.update(
+            {
+                f"{p}_lang": f"{lang} {sub_type}".strip(),
+                f"{p}_lang_native": f"{native} {sub_type}".strip(),
+            }
+        )
         if codec:
             vars_with_stream[f"{p}codec"] = codec
         return {
@@ -183,6 +216,7 @@ class MetadataProcessor:
                     s.get("native_language"),
                     "subtitle",
                     s["codec"],
+                    s["sub_type"],
                 ),
             }
             for s in self.subtitle_streams
