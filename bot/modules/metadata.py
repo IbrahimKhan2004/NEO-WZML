@@ -112,7 +112,7 @@ async def apply_metadata_title(
                             f"-metadata:s:v:{v}",
                             f"language={stream['tags']['language']}",
                         ]
-                    for k, v_ in meta["video"].items():
+                    for k, v_ in (meta["video"].items() if v == 0 else ()):
                         meta_maps += [f"-metadata:s:v:{v}", f"{k}={v_}"]
                     v += 1
                 elif typ == "audio":
