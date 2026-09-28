@@ -52,12 +52,7 @@ async def cancel(_, message):
         )
         await send_message(message, msg)
         return
-    if (
-        Config.OWNER_ID != user_id
-        and task.listener.user_id != user_id
-        and user_id not in sudo_users
-        and (user_id not in user_data or not user_data[user_id].get("SUDO"))
-    ):
+    if Config.OWNER_ID != user_id and task.listener.user_id != user_id:
         await send_message(message, "This task is not for you!")
         return
     obj = task.task()
@@ -81,7 +76,7 @@ async def cancel_multi(_, query):
     except (ValueError, TypeError):
         await query.answer("Malformed request.", show_alert=True)
         return
-    if user_id != owner and not await CustomFilters.sudo("", query):
+    if user_id != owner and user_id != Config.OWNER_ID:
         await query.answer("Not Yours!", show_alert=True)
         return
     if tag in multi_tags:
