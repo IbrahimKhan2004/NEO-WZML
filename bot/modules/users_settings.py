@@ -460,8 +460,8 @@ Configure the title tag for individual subtitle streams.
 <b>Placeholders:</b>
 • <code>{filename}</code> Current file name
 • <code>{basename}</code> Name without dot extension
-• <code>{s_lang}</code> Extracted subtitle language (e.g. English)
-• <code>{s_lang_native}</code> Extracted subtitle language native name (e.g. हिन्दी)
+• <code>{s_lang}</code> Extracted subtitle language with type (e.g. English [Full])
+• <code>{s_lang_native}</code> Extracted subtitle language native name with type (e.g. हिन्दी [Full])
 • <code>{scodec}</code> Subtitle codec of the stream (e.g. srt)
 
 ⏱ <b>Time Left:</b> <code>60 sec</code>""",
