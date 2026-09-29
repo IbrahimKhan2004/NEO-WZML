@@ -775,6 +775,8 @@ def real_debrid(url: str, tor=False):
 
 
 def buzzheavier(link):
+    if "/d/" in link or "ts.buzzheavier" in link:
+        return link
     link = link if link.endswith("/") else link + "/"
     client = create_scraper()
     try:
