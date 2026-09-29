@@ -78,7 +78,6 @@ meta_fields = {
 }
 advanced_options = [
     "EXCLUDED_EXTENSIONS",
-
     "YT_DLP_OPTIONS",
     "UPLOAD_PATHS",
     "USER_COOKIE_FILE",
@@ -281,7 +280,11 @@ Examples:
 • To delete specific TD, send just the name(s)
 
 <i>SA Email:</i> <code>{}</code>
- • <b>Time Left:</b> <code>60 sec</code>""".format(Config.USER_TD_SA if hasattr(Config, 'USER_TD_SA') and Config.USER_TD_SA else "Not configured by owner"),
+ • <b>Time Left:</b> <code>60 sec</code>""".format(
+            Config.USER_TD_SA
+            if hasattr(Config, "USER_TD_SA") and Config.USER_TD_SA
+            else "Not configured by owner"
+        ),
     ),
     "UPLOAD_PATHS": (
         "Dictionary",
@@ -306,7 +309,6 @@ Examples:
         "File extensions that won't upload/clone. Separate them by space.",
         "Send exluded extenions seperated by space without dot at beginning. </i> \n • <b>Time Left:</b> <code>60 sec</code>",
     ),
-
     "YT_DLP_OPTIONS": (
         "Text",
         "YT-DLP Options is the Custom Quality for the extraction of videos from the yt-dlp supported sites.",
@@ -444,8 +446,9 @@ Configure the title tag for individual audio streams.
 <b>Placeholders:</b>
 • <code>{filename}</code> Current file name
 • <code>{basename}</code> Name without dot extension
-• <code>{a_lang}</code> Extracted audio language (e.g. English)
-• <code>{a_lang_native}</code> Extracted audio language native name (e.g. हिन्दी)
+• <code>{a_lang}</code> Extracted audio language with info (e.g. English AAC 5.1 256Kbps)
+• <code>{a_lang_native}</code> Extracted audio language native name with info (e.g. हिन्दी AAC 5.1 256Kbps)
+• <code>{a_info}</code> Audio stream details (codec, channels, bitrate)
 • <code>{acodec}</code> Audio codec of the stream (e.g. aac)
 
 ⏱ <b>Time Left:</b> <code>60 sec</code>""",
@@ -756,9 +759,7 @@ async def get_user_settings(from_user, stype="main"):
         cur_du = default_upload if default_upload in _du_names else "rc"
         du = _du_names[cur_du]
         dur = _du_names[_du_next[cur_du]]
-        buttons.data_button(
-            f"Swap to {dur} Mode", f"userset {user_id} {cur_du}"
-        )
+        buttons.data_button(f"Swap to {dur} Mode", f"userset {user_id} {cur_du}")
 
         user_tokens = user_dict.get("USER_TOKENS", False)
         tr = "USER" if user_tokens else "OWNER"
@@ -802,7 +803,9 @@ async def get_user_settings(from_user, stype="main"):
         else:
             lsuffix = "Not Exists"
 
-        buttons.data_button("Leech Name Swap", f"userset {user_id} menu LEECH_NAME_SWAP")
+        buttons.data_button(
+            "Leech Name Swap", f"userset {user_id} menu LEECH_NAME_SWAP"
+        )
         if user_dict.get("LEECH_NAME_SWAP", False):
             lremname = user_dict["LEECH_NAME_SWAP"]
         elif "LEECH_NAME_SWAP" not in user_dict and hasattr(Config, "LEECH_NAME_SWAP"):
@@ -814,7 +817,10 @@ async def get_user_settings(from_user, stype="main"):
         caption_style = user_dict.get("LEECH_CAPTION_STYLE", "")
         if caption_style:
             from bot.helper.ext_utils.bot_utils import CAPTION_STYLE_NAMES
-            style_name = CAPTION_STYLE_NAMES.get(caption_style, caption_style.capitalize())
+
+            style_name = CAPTION_STYLE_NAMES.get(
+                caption_style, caption_style.capitalize()
+            )
         else:
             style_name = "Not set"
 
@@ -841,10 +847,14 @@ async def get_user_settings(from_user, stype="main"):
         if ldump_count > 0:
             dump_mode = user_dict.get("DUMP_MODE", True)
             if dump_mode:
-                buttons.data_button("Disable Dump Mode", f"userset {user_id} tog DUMP_MODE f")
+                buttons.data_button(
+                    "Disable Dump Mode", f"userset {user_id} tog DUMP_MODE f"
+                )
                 dump_mode_msg = "Enabled"
             else:
-                buttons.data_button("Enable Dump Mode", f"userset {user_id} tog DUMP_MODE t")
+                buttons.data_button(
+                    "Enable Dump Mode", f"userset {user_id} tog DUMP_MODE t"
+                )
                 dump_mode_msg = "Disabled"
         else:
             dump_mode_msg = "N/A (No LDUMP set)"
@@ -864,10 +874,14 @@ async def get_user_settings(from_user, stype="main"):
             thumb_layout = "None"
 
         if user_dict.get("AUTO_THUMBNAIL", False):
-            buttons.data_button("Disable Auto Thumbnail", f"userset {user_id} tog AUTO_THUMBNAIL f")
+            buttons.data_button(
+                "Disable Auto Thumbnail", f"userset {user_id} tog AUTO_THUMBNAIL f"
+            )
             auto_thumb = "Enabled"
         else:
-            buttons.data_button("Enable Auto Thumbnail", f"userset {user_id} tog AUTO_THUMBNAIL t")
+            buttons.data_button(
+                "Enable Auto Thumbnail", f"userset {user_id} tog AUTO_THUMBNAIL t"
+            )
             auto_thumb = "Disabled"
 
         if (
@@ -932,7 +946,11 @@ async def get_user_settings(from_user, stype="main"):
         from bot.helper.ext_utils.bot_utils import CAPTION_STYLE_NAMES
 
         current_style = user_dict.get("LEECH_CAPTION_STYLE", "")
-        current_name = CAPTION_STYLE_NAMES.get(current_style, current_style.capitalize()) if current_style else "None"
+        current_name = (
+            CAPTION_STYLE_NAMES.get(current_style, current_style.capitalize())
+            if current_style
+            else "None"
+        )
 
         text = f""" • <b>Name:</b> {user_name}
  • <b>Current Caption Style:</b> <b>{current_name}</b>
@@ -942,12 +960,13 @@ async def get_user_settings(from_user, stype="main"):
         for style_key, style_name in CAPTION_STYLE_NAMES.items():
             is_current = "✓" if style_key == current_style else ""
             buttons.data_button(
-                f"{style_name} {is_current}",
-                f"userset {user_id} set_style {style_key}"
+                f"{style_name} {is_current}", f"userset {user_id} set_style {style_key}"
             )
 
         if current_style:
-            buttons.data_button("Disable Style", f"userset {user_id} set_style", position="header")
+            buttons.data_button(
+                "Disable Style", f"userset {user_id} set_style", position="header"
+            )
 
         buttons.data_button("Back", f"userset {user_id} back leech", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
@@ -971,7 +990,7 @@ async def get_user_settings(from_user, stype="main"):
         text = f"""<b>✦ UPHOSTER SETTINGS</b>
 <i>Configure your Direct Download Link (DDL) hosting services.</i>
 
- • <b>Current Destination:</b> {', '.join(destinations)}"""
+ • <b>Current Destination:</b> {", ".join(destinations)}"""
 
     elif stype == "pixeldrain":
         buttons.data_button("PixelDrain Key", f"userset {user_id} menu PIXELDRAIN_KEY")
@@ -989,7 +1008,9 @@ async def get_user_settings(from_user, stype="main"):
         text = f""" • <b>PixelDrain Key:</b> <code>{pdtoken}</code>"""
 
     elif stype == "storageto":
-        buttons.data_button("StorageTo Token", f"userset {user_id} menu STORAGETO_TOKEN")
+        buttons.data_button(
+            "StorageTo Token", f"userset {user_id} menu STORAGETO_TOKEN"
+        )
         buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
         btns = buttons.build_menu(1)
@@ -1096,10 +1117,14 @@ async def get_user_settings(from_user, stype="main"):
 
         if Config.USER_TD_MODE:
             if user_dict.get("TD_MODE", False):
-                buttons.data_button("Disable TD Mode", f"userset {user_id} tog TD_MODE f", "header")
+                buttons.data_button(
+                    "Disable TD Mode", f"userset {user_id} tog TD_MODE f", "header"
+                )
                 td_mode_msg = "Enabled"
             else:
-                buttons.data_button("Enable TD Mode", f"userset {user_id} tog TD_MODE t", "header")
+                buttons.data_button(
+                    "Enable TD Mode", f"userset {user_id} tog TD_MODE t", "header"
+                )
                 td_mode_msg = "Disabled"
         else:
             td_mode_msg = "Force Disabled"
@@ -1182,7 +1207,9 @@ async def get_user_settings(from_user, stype="main"):
 
         if user_dict.get("MIRROR_NAME_SWAP", False):
             mremname = user_dict["MIRROR_NAME_SWAP"]
-        elif "MIRROR_NAME_SWAP" not in user_dict and hasattr(Config, "MIRROR_NAME_SWAP"):
+        elif "MIRROR_NAME_SWAP" not in user_dict and hasattr(
+            Config, "MIRROR_NAME_SWAP"
+        ):
             mremname = Config.MIRROR_NAME_SWAP
         else:
             mremname = "Not Exists"
@@ -1206,7 +1233,9 @@ async def get_user_settings(from_user, stype="main"):
 
         buttons.data_button("Mirror Prefix", f"userset {user_id} menu MIRROR_PREFIX")
         buttons.data_button("Mirror Suffix", f"userset {user_id} menu MIRROR_SUFFIX")
-        buttons.data_button("Mirror Name Swap", f"userset {user_id} menu MIRROR_NAME_SWAP")
+        buttons.data_button(
+            "Mirror Name Swap", f"userset {user_id} menu MIRROR_NAME_SWAP"
+        )
         buttons.data_button("Back", f"userset {user_id} back", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
         btns = buttons.build_menu(2)
@@ -1276,9 +1305,13 @@ async def get_user_settings(from_user, stype="main"):
 
         merge_video_setting = user_dict.get("MERGE_VIDEO", False)
         if merge_video_setting:
-            buttons.data_button("Disable Merge Video", f"userset {user_id} tog MERGE_VIDEO f")
+            buttons.data_button(
+                "Disable Merge Video", f"userset {user_id} tog MERGE_VIDEO f"
+            )
         else:
-            buttons.data_button("Enable Merge Video", f"userset {user_id} tog MERGE_VIDEO t")
+            buttons.data_button(
+                "Enable Merge Video", f"userset {user_id} tog MERGE_VIDEO t"
+            )
 
         buttons.data_button("Back", f"userset {user_id} back", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
@@ -1293,7 +1326,7 @@ async def get_user_settings(from_user, stype="main"):
  • <b>Audio Metadata:</b> {display_audio_meta}
  • <b>Video Metadata:</b> {display_video_meta}
  • <b>Subtitle Metadata:</b> {display_subtitle_meta}
- • <b>Merge Video:</b> {'Enabled' if merge_video_setting else 'Disabled'}
+ • <b>Merge Video:</b> {"Enabled" if merge_video_setting else "Disabled"}
 
 <blockquote><i>💡 Metadata is applied to files during upload. Use dynamic variables like {{filename}}, {{basename}}, {{audiolang}}.</i></blockquote>"""
 
@@ -1335,7 +1368,9 @@ async def get_user_settings(from_user, stype="main"):
 
         yt_cookie_path = f"cookies/{user_id}/cookies.txt"
         user_cookie_msg = (
-            "<b>Exists</b>" if await aiopath.exists(yt_cookie_path) else "<b>Not Set</b>"
+            "<b>Exists</b>"
+            if await aiopath.exists(yt_cookie_path)
+            else "<b>Not Set</b>"
         )
         buttons.data_button(
             "YT Cookie File", f"userset {user_id} menu USER_COOKIE_FILE"
@@ -1584,7 +1619,9 @@ async def set_ldump(_, message, user_id, rfunc):
             if chat:
                 ldumps[title] = f"{chat.id}{topic_suffix}" if topic_suffix else chat.id
             else:
-                await send_message(message, f"⚠ Invalid chat: {chat_str_bare}. Skipping.")
+                await send_message(
+                    message, f"⚠ Invalid chat: {chat_str_bare}. Skipping."
+                )
 
     update_user_ldata(user_id, "LDUMP", ldumps)
     await delete_message(message)
@@ -1617,17 +1654,16 @@ async def set_user_td(_, message, user_id, rfunc):
             index_link = ""
 
         if not drive_id or len(drive_id) < 10:
-            await send_message(message, f"⚠ Invalid drive ID format for '{td_name}'. Skipping.")
+            await send_message(
+                message, f"⚠ Invalid drive ID format for '{td_name}'. Skipping."
+            )
             continue
 
         for existing_name in list(user_tds.keys()):
             if td_name.casefold() == existing_name.casefold():
                 del user_tds[existing_name]
 
-        user_tds[td_name] = {
-            "drive_id": drive_id,
-            "index_link": index_link
-        }
+        user_tds[td_name] = {"drive_id": drive_id, "index_link": index_link}
 
     update_user_ldata(user_id, "USER_TDS", user_tds)
     await delete_message(message)
@@ -1637,7 +1673,11 @@ async def set_user_td(_, message, user_id, rfunc):
 
 async def get_menu(option, message, user_id):
     handler_dict[user_id] = False
-    option = "METACORE" if option in ["METACORE", "META_FIELDS"] or option.startswith("META_") else option
+    option = (
+        "METACORE"
+        if option in ["METACORE", "META_FIELDS"] or option.startswith("META_")
+        else option
+    )
     user_dict = user_data.get(user_id, {})
 
     file_dict = {
@@ -1650,7 +1690,10 @@ async def get_menu(option, message, user_id):
 
     buttons = ButtonMaker()
     if option in [
-        "THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "USER_COOKIE_FILE",
+        "THUMBNAIL",
+        "RCLONE_CONFIG",
+        "TOKEN_PICKLE",
+        "USER_COOKIE_FILE",
         "TERABOX_COOKIE",
     ]:
         key = "file"
@@ -1726,8 +1769,16 @@ async def get_menu(option, message, user_id):
         mf = user_dict.get("META_FIELDS", {})
         for k, n in meta_fields.items():
             v = mf.get(k)
-            v = " | ".join(f"{a}={b}" for a, b in v.items()) if isinstance(v, dict) else v
-            text += f"{n} is <code>{escape(v)}</code>\n" if v else f"{n} is <b>Not Set</b>\n"
+            v = (
+                " | ".join(f"{a}={b}" for a, b in v.items())
+                if isinstance(v, dict)
+                else v
+            )
+            text += (
+                f"{n} is <code>{escape(v)}</code>\n"
+                if v
+                else f"{n} is <b>Not Set</b>\n"
+            )
         text += "\n"
     else:
         text += f"➜ <b>Current Value :</b> {val if val else '<i>Not Set</i>'}\n\n"
@@ -1877,7 +1928,9 @@ async def edit_user_settings(client, query):
         style = data[3] if len(data) > 3 else ""
         if style:
             update_user_ldata(user_id, "LEECH_CAPTION_STYLE", style)
-            await query.answer(f"Caption style set to {style.capitalize()}!", show_alert=True)
+            await query.answer(
+                f"Caption style set to {style.capitalize()}!", show_alert=True
+            )
         else:
             update_user_ldata(user_id, "LEECH_CAPTION_STYLE", "")
             await query.answer("Caption style disabled!", show_alert=True)
@@ -1886,9 +1939,22 @@ async def edit_user_settings(client, query):
     elif data[2] == "menu":
         target_opt = data[3]
         if target_opt in ["METACORE", "META_FIELDS"] or target_opt.startswith("META_"):
-            if any(user_dict.get(k) for k in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]):
+            if any(
+                user_dict.get(k)
+                for k in [
+                    "METADATA",
+                    "AUDIO_METADATA",
+                    "VIDEO_METADATA",
+                    "SUBTITLE_METADATA",
+                ]
+            ):
                 return await query.answer("Reset Metadata first!", show_alert=True)
-        elif target_opt in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
+        elif target_opt in [
+            "METADATA",
+            "AUDIO_METADATA",
+            "VIDEO_METADATA",
+            "SUBTITLE_METADATA",
+        ]:
             if user_dict.get("META_FIELDS"):
                 return await query.answer("Reset MetaCore first!", show_alert=True)
         await query.answer()
@@ -1898,13 +1964,14 @@ async def edit_user_settings(client, query):
         if data[3] == "TD_MODE":
             if not Config.USER_TD_MODE:
                 return await query.answer(
-                    "User TD Mode is disabled by bot owner!",                     show_alert=True
+                    "User TD Mode is disabled by bot owner!", show_alert=True
                 )
             if data[4] == "t":
                 user_tds = user_dict.get("USER_TDS", {})
                 if not user_tds:
                     return await query.answer(
-                        "Set at least one TD first before enabling TD Mode!", show_alert=True
+                        "Set at least one TD first before enabling TD Mode!",
+                        show_alert=True,
                     )
             update_user_ldata(user_id, data[3], data[4] == "t")
             await update_user_settings(query, stype="gdrive")
@@ -1959,7 +2026,12 @@ async def edit_user_settings(client, query):
         buttons.data_button("Close", f"userset {user_id} close", "footer")
 
         if ldumps:
-            dump_list = "\n".join([f" • <b>{name}</b>: <code>{chat}</code>" for name, chat in ldumps.items()])
+            dump_list = "\n".join(
+                [
+                    f" • <b>{name}</b>: <code>{chat}</code>"
+                    for name, chat in ldumps.items()
+                ]
+            )
             text = f"""<b>Custom Leech Dumps</b>
  • <b>Name:</b> {name}
 
@@ -1982,7 +2054,9 @@ async def edit_user_settings(client, query):
         buttons.data_button("Stop", f"userset {user_id} ldump_list stop")
         buttons.data_button("Back", f"userset {user_id} ldump_list", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
-        await edit_message(message, f"<b>Add Custom Dumps</b>\n\n{text}", buttons.build_menu(1))
+        await edit_message(
+            message, f"<b>Add Custom Dumps</b>\n\n{text}", buttons.build_menu(1)
+        )
         rfunc = partial(update_user_settings, query, "leech")
         pfunc = partial(set_ldump, user_id=user_id, rfunc=rfunc)
         await event_handler(client, query, pfunc, rfunc)
@@ -2006,7 +2080,12 @@ async def edit_user_settings(client, query):
         buttons.data_button("Close", f"userset {user_id} close", "footer")
 
         if ldumps:
-            dump_list = "\n".join([f" • <b>{name}</b>: <code>{chat}</code>" for name, chat in ldumps.items()])
+            dump_list = "\n".join(
+                [
+                    f" • <b>{name}</b>: <code>{chat}</code>"
+                    for name, chat in ldumps.items()
+                ]
+            )
             text = f"""<b>Custom Leech Dumps</b>
  • <b>Name:</b> {name}
 
@@ -2037,12 +2116,14 @@ async def edit_user_settings(client, query):
         buttons.data_button("Close", f"userset {user_id} close", "footer")
 
         if user_tds:
-            td_list = "\n".join([
-                f" • <b>{name}</b>:\n"
-                f"   • <b>Drive ID:</b> <code>{info['drive_id']}</code>\n"
-                f"   • <b>Index:</b> <code>{info.get('index_link', 'None')}</code>"
-                for name, info in user_tds.items()
-            ])
+            td_list = "\n".join(
+                [
+                    f" • <b>{name}</b>:\n"
+                    f"   • <b>Drive ID:</b> <code>{info['drive_id']}</code>\n"
+                    f"   • <b>Index:</b> <code>{info.get('index_link', 'None')}</code>"
+                    for name, info in user_tds.items()
+                ]
+            )
             text = f"""<b>User Team Drives</b>
  • <b>Name:</b> {name}
 
@@ -2066,7 +2147,9 @@ async def edit_user_settings(client, query):
         buttons.data_button("Stop", f"userset {user_id} user_tds stop")
         buttons.data_button("Back", f"userset {user_id} user_tds", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
-        await edit_message(message, f"<b>Add User Team Drive</b>\n\n{text}", buttons.build_menu(1))
+        await edit_message(
+            message, f"<b>Add User Team Drive</b>\n\n{text}", buttons.build_menu(1)
+        )
         rfunc = partial(update_user_settings, query, "gdrive")
         pfunc = partial(set_user_td, user_id=user_id, rfunc=rfunc)
         await event_handler(client, query, pfunc, rfunc)
@@ -2090,12 +2173,14 @@ async def edit_user_settings(client, query):
         buttons.data_button("Close", f"userset {user_id} close", "footer")
 
         if user_tds:
-            td_list = "\n".join([
-                f" • <b>{name}</b>:\n"
-                f"   • <b>Drive ID:</b> <code>{info['drive_id']}</code>\n"
-                f"   • <b>Index:</b> <code>{info.get('index_link', 'None')}</code>"
-                for name, info in user_tds.items()
-            ])
+            td_list = "\n".join(
+                [
+                    f" • <b>{name}</b>:\n"
+                    f"   • <b>Drive ID:</b> <code>{info['drive_id']}</code>\n"
+                    f"   • <b>Index:</b> <code>{info.get('index_link', 'None')}</code>"
+                    for name, info in user_tds.items()
+                ]
+            )
             text = f"""<b>User Team Drives</b>
  • <b>Name:</b> {name}
 
@@ -2111,9 +2196,22 @@ async def edit_user_settings(client, query):
     elif data[2] in ["set", "addone", "rmone"]:
         target_opt = data[3]
         if target_opt in ["METACORE", "META_FIELDS"] or target_opt.startswith("META_"):
-            if any(user_dict.get(k) for k in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]):
+            if any(
+                user_dict.get(k)
+                for k in [
+                    "METADATA",
+                    "AUDIO_METADATA",
+                    "VIDEO_METADATA",
+                    "SUBTITLE_METADATA",
+                ]
+            ):
                 return await query.answer("Reset Metadata first!", show_alert=True)
-        elif target_opt in ["METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
+        elif target_opt in [
+            "METADATA",
+            "AUDIO_METADATA",
+            "VIDEO_METADATA",
+            "SUBTITLE_METADATA",
+        ]:
             if user_dict.get("META_FIELDS"):
                 return await query.answer("Reset MetaCore first!", show_alert=True)
         await query.answer()
@@ -2131,9 +2229,7 @@ async def edit_user_settings(client, query):
         buttons.data_button("Back", f"userset {user_id} menu {data[3]}", "footer")
         buttons.data_button("Close", f"userset {user_id} close", "footer")
         prompt_msg = text if data[2] == "set" else message.text.html + "\n\n" + text
-        await edit_message(
-            message, prompt_msg, buttons.build_menu(1)
-        )
+        await edit_message(message, prompt_msg, buttons.build_menu(1))
         rfunc = partial(get_menu, data[3], message, user_id)
         pfunc = partial(func, option=data[3], rfunc=rfunc)
         await event_handler(client, query, pfunc, rfunc)
