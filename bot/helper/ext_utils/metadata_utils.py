@@ -55,13 +55,19 @@ class MetadataProcessor:
         if not need:
             return
         try:
-            cmd = (
-                "ffprobe -v error -select_streams a -of compact=p=0 "
-                "-show_entries packet=stream_index,pts_time,size"
-            )
-            p = await create_subprocess_exec(
-                *cmd.split(), path, stdout=PIPE, stderr=DEVNULL
-            )
+            cmd = [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "packet=stream_index,pts_time,size",
+                "-of",
+                "compact=p=0",
+                path,
+            ]
+            p = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=DEVNULL)
             tot = {}
             async for line in p.stdout:
                 try:
