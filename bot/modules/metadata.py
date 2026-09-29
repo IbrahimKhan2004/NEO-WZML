@@ -99,7 +99,7 @@ async def apply_metadata_title(
                 file_path,
             ]
             maps, meta_maps = [], []
-            v, a, s = 0, 0, 0
+            v, a, s, t = 0, 0, 0, 0
             for stream in streams:
                 idx, typ = stream["index"], stream["codec_type"]
                 if stream.get("disposition", {}).get("attached_pic"):
@@ -151,6 +151,11 @@ async def apply_metadata_title(
                     for k, v_ in sub_meta.items():
                         meta_maps += [f"-metadata:s:s:{s}", f"{k}={v_}"]
                     s += 1
+                elif typ == "attachment":
+                    maps += [f"-c:t:{t}", "copy"]
+                    for tag_k, tag_v in stream.get("tags", {}).items():
+                        meta_maps += [f"-metadata:s:t:{t}", f"{tag_k}={tag_v}"]
+                    t += 1
                 else:
                     maps += [f"-c:{idx}", "copy"]
 
