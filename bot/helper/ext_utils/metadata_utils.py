@@ -1,5 +1,7 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
+from asyncio import create_subprocess_exec
+from asyncio.subprocess import DEVNULL, PIPE
 from os.path import basename, splitext
 from re import IGNORECASE, compile as re_compile, escape, sub
 from pycountry import languages
@@ -34,6 +36,63 @@ class MetadataProcessor:
         found = cls._sub_type_pattern.findall(title)
         found = dict.fromkeys(cls._sub_canon[t.lower()] for t in found)
         return " ".join(f"[{k}]" for k in found)
+
+    _fmt = {"ac3": "DD", "eac3": "DDP", "opus": "Opus", "truehd": "TrueHD"}
+
+    @staticmethod
+    def stream_bps(s):
+        return s.get("bit_rate") or next(
+            (v for k, v in s.get("tags", {}).items() if k[:3].upper() == "BPS"), ""
+        )
+
+    @classmethod
+    async def scan_bps(cls, streams, path):
+        need = {
+            s["index"]: s
+            for s in streams
+            if s.get("codec_type") == "audio" and not cls.stream_bps(s)
+        }
+        if not need:
+            return
+        try:
+            cmd = (
+                "ffprobe -v error -select_streams a -of compact=p=0 "
+                "-show_entries packet=stream_index,pts_time,size"
+            )
+            p = await create_subprocess_exec(
+                *cmd.split(), path, stdout=PIPE, stderr=DEVNULL
+            )
+            tot = {}
+            async for line in p.stdout:
+                try:
+                    d = dict(x.split("=", 1) for x in line.decode().split("|"))
+                    i, z = int(d["stream_index"]), int(d["size"])
+                    t = float(d["pts_time"])
+                except (KeyError, ValueError):
+                    continue
+                v = tot.setdefault(i, [0, 0, t, t])
+                v[0], v[1], v[3] = v[0] + z, v[1] + 1, t
+            await p.wait()
+            for i, (b, n, t0, t1) in tot.items():
+                if n > 1 and t1 > t0 and i in need:
+                    need[i]["bit_rate"] = str(int(b * 8 * (n - 1) / (t1 - t0) / n))
+        except Exception:
+            pass
+
+    @classmethod
+    def audio_info(cls, s):
+        c, ch = s.get("codec_name", ""), s.get("channels", 0)
+        br = cls.stream_bps(s)
+        return " ".join(
+            filter(
+                None,
+                (
+                    cls._fmt.get(c, c.upper()),
+                    (f"{ch - 1}.1" if ch > 5 else f"{ch}.0") if ch else "",
+                    f"{round(int(br) / 1000)}Kbps" if str(br).isdigit() else "",
+                ),
+            )
+        )
 
     def __init__(self):
         self.vars = {}
@@ -74,7 +133,9 @@ class MetadataProcessor:
         self.audio_streams, self.subtitle_streams = [], []
         stype = ""
         try:
-            for s in await get_streams(file_path) or []:
+            streams = await get_streams(file_path) or []
+            await self.scan_bps(streams, file_path)
+            for s in streams:
                 ctype = s.get("codec_type", "").lower()
                 slang = s.get("tags", {}).get("language", "unknown")
                 full_lang = self.convert_lang_code(slang)
@@ -88,6 +149,7 @@ class MetadataProcessor:
                     "sub_type": self.sub_type(s.get("tags", {}).get("title")),
                 }
                 if ctype == "audio":
+                    entry["a_info"] = self.audio_info(s)
                     self.audio_streams.append(entry)
                     if self.vars["audiolang"] == "unknown" and slang != "und":
                         self.vars["audiolang"] = full_lang
@@ -156,6 +218,7 @@ class MetadataProcessor:
         stream_type="audio",
         codec="",
         sub_type="",
+        a_info="",
     ):
         if not isinstance(metadata_dict, dict):
             return {}
@@ -179,6 +242,7 @@ class MetadataProcessor:
         )
         if codec:
             vars_with_stream[f"{p}codec"] = codec
+        vars_with_stream["a_info"] = a_info
         return {
             self.sanitize(k): (
                 str(v).format(**vars_with_stream) if isinstance(v, str) else str(v)
@@ -200,6 +264,7 @@ class MetadataProcessor:
                     s.get("native_language"),
                     "audio",
                     s["codec"],
+                    a_info=s["a_info"],
                 ),
             }
             for s in self.audio_streams
