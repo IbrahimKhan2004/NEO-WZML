@@ -444,8 +444,8 @@ Configure the title tag for individual audio streams.
 <b>Placeholders:</b>
 • <code>{filename}</code> Current file name
 • <code>{basename}</code> Name without dot extension
-• <code>{a_lang}</code> Extracted audio language (e.g. English)
-• <code>{a_lang_native}</code> Extracted audio language native name (e.g. हिन्दी)
+• <code>{a_lang}</code> Extracted audio language with info (e.g. English AAC 5.1 256Kbps)
+• <code>{a_lang_native}</code> Extracted audio language native name with info (e.g. हिन्दी AAC 5.1 256Kbps)
 • <code>{acodec}</code> Audio codec of the stream (e.g. aac)
 
 ⏱ <b>Time Left:</b> <code>60 sec</code>""",

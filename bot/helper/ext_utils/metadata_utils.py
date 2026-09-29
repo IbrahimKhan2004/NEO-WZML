@@ -137,7 +137,7 @@ class MetadataProcessor:
             "scodec": "",
         }
         self.audio_streams, self.subtitle_streams = [], []
-        stype = ""
+        stype, ainfo = "", ""
         try:
             streams = await get_streams(file_path) or []
             await self.scan_bps(streams, file_path)
@@ -160,6 +160,7 @@ class MetadataProcessor:
                     if self.vars["audiolang"] == "unknown" and slang != "und":
                         self.vars["audiolang"] = full_lang
                         self.vars["audiolang_native"] = native_lang
+                        ainfo = entry["a_info"]
                 elif ctype == "subtitle":
                     self.subtitle_streams.append(entry)
                     if self.vars["sublang"] == "none" and slang != "und":
@@ -181,8 +182,8 @@ class MetadataProcessor:
             r"[._]+", " ", bname[: bname.rfind(m[-1])] if m else bname
         ).strip(" ([-")
         self.vars.update(
-            a_lang=self.vars["audiolang"],
-            a_lang_native=self.vars["audiolang_native"],
+            a_lang=f'{self.vars["audiolang"]} {ainfo}'.strip(),
+            a_lang_native=f'{self.vars["audiolang_native"]} {ainfo}'.strip(),
             s_lang=f'{self.vars["sublang"]} {stype}'.strip(),
             s_lang_native=f'{self.vars["sublang_native"]} {stype}'.strip(),
         )
@@ -240,10 +241,11 @@ class MetadataProcessor:
         native = vars_with_stream.get(
             f"{'audiolang' if p == 'a' else 'sublang'}_native", lang
         )
+        suffix = a_info if p == "a" else sub_type
         vars_with_stream.update(
             {
-                f"{p}_lang": f"{lang} {sub_type}".strip(),
-                f"{p}_lang_native": f"{native} {sub_type}".strip(),
+                f"{p}_lang": f"{lang} {suffix}".strip(),
+                f"{p}_lang_native": f"{native} {suffix}".strip(),
             }
         )
         if codec:
