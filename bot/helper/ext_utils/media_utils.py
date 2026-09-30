@@ -888,10 +888,7 @@ class FFMpeg:
             "pipe:1",
             "-i",
             video_file,
-            "-map",
-            "0",
-            "-map",
-            "-0:t",
+            "-map", "0:V?", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-map", "0:d?",
             "-ignore_unknown",
             "-c",
             "copy",
@@ -996,7 +993,7 @@ class FFMpeg:
         self._total_time = (await get_media_info(video_file))[0]
         base_name, ext = ospath.splitext(video_file)
         output = f"{base_name}.streamswap{ext}"
-        map_args = ["-map", "0:v?"]
+        map_args = ["-map", "0:V?"]
 
         if audio_indices:
             for idx in audio_indices:
@@ -1010,7 +1007,7 @@ class FFMpeg:
         else:
             map_args.extend(["-map", "0:s?"])
 
-        map_args.extend(["-map", "0:d?", "-map", "-0:t", "-ignore_unknown"])
+        map_args.extend(["-map", "0:d?", "-map", "0:t?", "-ignore_unknown"])
         cmd = [
             "taskset",
             "-c",
@@ -1062,10 +1059,10 @@ class FFMpeg:
         self._total_time = (await get_media_info(video_file))[0]
         base_name, ext = ospath.splitext(video_file)
         output = f"{base_name}.subswap{ext}"
-        map_args = ["-map", "0:v?", "-map", "0:a?"]
+        map_args = ["-map", "0:V?", "-map", "0:a?"]
         for idx in subtitle_indices:
             map_args.extend(["-map", f"0:{idx}"])
-        map_args.extend(["-map", "0:d?", "-map", "-0:t", "-ignore_unknown"])
+        map_args.extend(["-map", "0:d?", "-map", "0:t?", "-ignore_unknown"])
         cmd = [
             "taskset",
             "-c",
@@ -1129,11 +1126,8 @@ class FFMpeg:
             "pipe:1",
             "-i",
             video_file,
-            "-map",
-            "0",
+            "-map", "0:V?", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-map", "0:d?",
             *map_args,
-            "-map",
-            "-0:t",
             "-ignore_unknown",
             "-c",
             "copy",
@@ -1178,7 +1172,7 @@ class FFMpeg:
             for ctype in ("audio", "subtitle")
         }
         inputs = []
-        map_args = ["-map", "0", "-map", "-0:d", "-map", "-0:t", "-ignore_unknown"]
+        map_args = ["-map", "0:V?", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-ignore_unknown"]
         for t in tracks:
             if t["path"] not in inputs:
                 inputs.append(t["path"])
