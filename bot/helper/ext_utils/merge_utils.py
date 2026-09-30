@@ -13,6 +13,7 @@ from natsort import natsorted
 from bot import LOGGER, DOWNLOAD_DIR
 from bot.core.config_manager import BinConfig
 from bot.helper.ext_utils.bot_utils import sync_to_async
+from bot.helper.ext_utils.media_utils import get_streams
 
 
 VIDEO_EXTS = (".mp4", ".mkv", ".avi", ".mov", ".webm", ".ts", ".m2ts")
@@ -94,11 +95,12 @@ class MergeVideos:
                 for v in videos:
                     await f.write(f"file '{self._escape_concat_path(v)}'\n")
 
+            pics = [a for s in await get_streams(videos[0]) or [] if s.get("disposition", {}).get("attached_pic") for a in ("-map", f"-0:{s['index']}")]
             cmd = [
                 BinConfig.FFMPEG_NAME, "-hide_banner", "-loglevel", "error",
                 "-f", "concat", "-safe", "0",
                 "-i", concat_path,
-                "-map", "0", "-map", "-0:t",
+                "-map", "0", *pics,
                 "-ignore_unknown",
                 "-c", "copy",
                 output_path,
