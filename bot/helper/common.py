@@ -1500,7 +1500,7 @@ class TaskConfig:
                 out_path = f"{base_name}.synced{ext}"
 
                 cmd = ["ffmpeg", "-hide_banner", "-y", "-i", f_path]
-                map_args = ["-map", "0"]
+                map_args = ["-map", "0:V?", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-map", "0:d?"]
                 input_idx = 1
                 for tid, delay_ms in sync_map.items():
                     map_args.extend(["-map", f"-0:{tid}"])
@@ -1712,7 +1712,6 @@ class TaskConfig:
                         ) != lang:
                             continue
                         map_args += ["-map", f"-0:{s.get('index')}"]
-                map_args += ["-map", "-0:t"]
                 self.proceed_count += 1
                 self.subname = ospath.basename(f_path)
                 self.subsize = await get_path_size(f_path)
