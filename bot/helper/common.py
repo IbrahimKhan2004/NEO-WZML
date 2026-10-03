@@ -183,6 +183,7 @@ class TaskConfig:
         self.merge_video = False
         self.merge_after_extract = False
         self.advanced_merge = False
+        self.auto_merge = False
         self.merge_name = ""
         self.extract_stream = False
         self.remove_stream = False
@@ -1289,6 +1290,30 @@ class TaskConfig:
                 return False
         self.name = ospath.basename(base)
         return base
+
+    async def proceed_auto_merge(self, dl_path, gid):
+        from bot.helper.ext_utils.auto_merge_utils import plan_auto_merge
+        from bot.helper.ext_utils.merge_utils import VIDEO_EXTS, MergeVideos
+        from bot.helper.mirror_leech_utils.status_utils.merge_status import MergeStatus
+
+        files = [ospath.join(d, f) for d, _, fs in await sync_to_async(walk, dl_path) for f in fs if f.lower().endswith(VIDEO_EXTS)]
+        limit = (TgClient.MAX_SPLIT_SIZE if TgClient.IS_PREMIUM_USER else 2097152000) - 83886080
+        plan, merger = await plan_auto_merge(files, limit), MergeVideos(self)
+        for index, (group, name) in enumerate(plan, 1):
+            if len(group) == 1 and ospath.basename(group[0]) == name:
+                continue
+            async with task_dict_lock:
+                task_dict[self.mid] = MergeStatus(self, merger, gid, index, len(plan))
+            self.progress = False
+            async with cpu_eater_lock:
+                self.progress = True
+                result = await merger.merge(dl_path, gid, group, name)
+            if not result:
+                if not self.is_cancelled:
+                    self.is_cancelled = True
+                    await self.on_upload_error(merger.error or "Auto merge failed!")
+                return False
+        return dl_path
 
     async def proceed_extract_stream(self, dl_path, gid):
         from natsort import natsorted
