@@ -28,6 +28,8 @@ def _vt_menu(vstate):
     buttons.data_button(f"{tick}Video Merge", "vt mv")
     am_tick = "✅ " if vstate["advanced_merge"] else ""
     buttons.data_button(f"{am_tick}Advanced Video Merge", "vt am")
+    au_tick = "✅ " if vstate["auto_merge"] else ""
+    buttons.data_button(f"{au_tick}Auto Merge", "vt aum")
     es_tick = "✅ " if vstate["extract_stream"] else ""
     buttons.data_button(f"{es_tick}Extract Streams", "vt es")
     rs_tick = "✅ " if vstate["remove_stream"] else ""
@@ -198,6 +200,10 @@ async def edit_video_tool(client, query):
 
     action = query.data.split()[1]
 
+    if action in ("mv", "am") and vstate["auto_merge"]:
+        return await query.answer("Disable Auto Merge first!", show_alert=True)
+    if action == "aum" and (vstate["merge_video"] or vstate["advanced_merge"]):
+        return await query.answer("Disable Video Merge/Advanced Video Merge first!", show_alert=True)
     if action == "mv" and vstate["advanced_merge"]:
         return await query.answer("Disable Advanced Video Merge first!", show_alert=True)
     if action == "mv" and not vstate["merge_video"]:
@@ -231,6 +237,10 @@ async def edit_video_tool(client, query):
     elif action == "am" and vstate["advanced_merge"]:
         vstate["advanced_merge"] = False
         await query.answer("Advanced Video Merge disabled!")
+        await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
+    elif action == "aum":
+        vstate["auto_merge"] = not vstate["auto_merge"]
+        await query.answer(f"Auto Merge {'enabled' if vstate['auto_merge'] else 'disabled'}!")
         await edit_message(message, vstate["text_func"](), _vt_menu(vstate))
     elif action == "es" and not vstate["extract_stream"]:
         vstate["extract_stream"] = True
@@ -402,6 +412,7 @@ async def edit_video_tool(client, query):
         if not (
             vstate["merge_video"]
             or vstate["advanced_merge"]
+            or vstate["auto_merge"]
             or vstate["extract_stream"]
             or vstate["remove_stream"]
             or vstate["audio_swap"]
@@ -426,6 +437,7 @@ async def get_video_tool_settings(listener):
         "merge_video": False,
         "merge_name": "",
         "advanced_merge": False,
+        "auto_merge": False,
         "extract_stream": False,
         "remove_stream": False,
         "audio_swap": False,
@@ -457,6 +469,7 @@ async def get_video_tool_settings(listener):
             vstate["merge_video"] = False
             vstate["merge_name"] = ""
             vstate["advanced_merge"] = False
+            vstate["auto_merge"] = False
             vstate["extract_stream"] = False
             vstate["remove_stream"] = False
             vstate["audio_swap"] = False
@@ -482,6 +495,7 @@ async def get_video_tool_settings(listener):
     listener.merge_video = vstate["merge_video"]
     listener.merge_name = vstate["merge_name"]
     listener.advanced_merge = vstate["advanced_merge"]
+    listener.auto_merge = vstate["auto_merge"]
     listener.extract_stream = vstate["extract_stream"]
     listener.remove_stream = vstate["remove_stream"]
     listener.audio_swap = vstate["audio_swap"]
