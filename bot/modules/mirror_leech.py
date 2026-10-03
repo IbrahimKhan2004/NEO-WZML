@@ -179,7 +179,7 @@ class Mirror(TaskListener):
                 )
             else:
                 vt_attrs = (
-                    "merge_video", "merge_name", "advanced_merge", "extract_stream",
+                    "merge_video", "merge_name", "advanced_merge", "auto_merge", "extract_stream",
                     "remove_stream", "audio_swap", "subtitle_swap", "sync_streams",
                     "add_streams", "vt_convert_audio", "vt_audio_bitrate",
                     "vt_audio_channel", "vt_audio_stream_mode",
