@@ -313,7 +313,7 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        if self.extract:
+        if self.extract or self.auto_merge:
             up_path = await self.proceed_extract(up_path, gid)
             if self.is_cancelled:
                 return
@@ -344,6 +344,14 @@ class TaskListener(TaskConfig):
             if self.is_cancelled:
                 return
             self.is_file = False
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
+        if self.auto_merge and not self.is_file:
+            up_path = await self.proceed_auto_merge(up_path, gid)
+            if self.is_cancelled:
+                return
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
