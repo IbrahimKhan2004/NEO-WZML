@@ -53,6 +53,11 @@ async def plan_auto_merge(files, limit):
             if cur and size + fsize > limit:
                 parts, cur, size = [*parts, cur], [], 0
             cur, size = [*cur, (e, f)], size + fsize
-        for part in [*parts, cur]:
-            plan.append(([f for _, f in part], await _name(s, part, not parts)))
+        parts = [*parts, cur]
+        if len(parts) > 1 and len(parts[-1]) * 2 < len(parts[0]):  # tiny last part: balance all parts equally
+            flat, k = [x for q in parts for x in q], len(parts)
+            bal = [flat[i * len(flat) // k : (i + 1) * len(flat) // k] for i in range(k)]
+            parts = bal if all(sum(ospath.getsize(f) for _, f in q) * 1.01 <= limit for q in bal) else parts
+        for part in parts:
+            plan.append(([f for _, f in part], await _name(s, part, len(parts) == 1)))
     return plan
