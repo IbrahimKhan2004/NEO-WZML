@@ -353,11 +353,12 @@ merge_video = """<b>✦ MERGE VIDEOS</b>: <code>-mv</code>
 
 video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 
-<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Advanced Video Merge, Extract Streams, Remove Stream, Audio Swap, Subtitle Swap, Sync Audio/Subtitles, Add Audio/Subtitles, Convert Audio) before the task starts.
+<b>Purpose:</b> Opens an interactive menu to configure video processing options (Video Merge, Advanced Video Merge, Auto Merge, Extract Streams, Remove Stream, Audio Swap, Subtitle Swap, Sync Audio/Subtitles, Add Audio/Subtitles, Convert Audio) before the task starts.
 
 <b>Options Available in Menu:</b>
 • <b>Video Merge:</b> Concatenate videos in folder order into one file.
 • <b>Advanced Video Merge:</b> Configure multiple named merge groups and sequence in the Web UI after download completes.
+• <b>Auto Merge:</b> Auto-extract archives, then merge episodes per season in order (S1 Complete / S1 E1-4), split at episode boundaries to stay under the Telegram limit (1.92GB, or 3.92GB for premium), drop attachments and name the output from the first file (or ffprobe). Cannot be combined with Video Merge/Advanced Video Merge.
 • <b>Extract Streams:</b> Selectively extract specific audio, subtitle, or video streams to standalone files (.m4a, .ass, .mkv). Optionally delete main video files after extraction.
 • <b>Remove Stream:</b> Selectively strip unwanted audio/subtitle/video streams from the video.
 • <b>Audio Swap:</b> Re-order audio streams interactively by selection sequence (stream copy, no re-encode).
@@ -373,7 +374,7 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Video Merge and Advanced Video Merge run after extract (only one can be selected); Advanced Video Merge opens a Web UI to set groups and order. Remove Stream runs after Video Merge. Add Audio/Subtitles runs after Remove Stream. Audio Swap runs after Add Audio/Subtitles. Subtitle Swap runs after Audio Swap. Sync Audio/Subtitles runs after Subtitle Swap. Convert Audio runs after Sync Audio/Subtitles. Extract Streams runs after Convert Audio and before FFmpeg commands."""
+<b>Note:</b> Video Merge and Advanced Video Merge run after extract (only one can be selected); Advanced Video Merge opens a Web UI to set groups and order. Auto Merge runs after extract. Remove Stream runs after Video Merge. Add Audio/Subtitles runs after Remove Stream. Audio Swap runs after Add Audio/Subtitles. Subtitle Swap runs after Audio Swap. Sync Audio/Subtitles runs after Subtitle Swap. Convert Audio runs after Sync Audio/Subtitles. Extract Streams runs after Convert Audio and before FFmpeg commands."""
 
 subtitle_swap = """<b>✦ SUBTITLE SWAP</b> (via <code>-vt</code> menu)
 
