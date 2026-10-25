@@ -1031,6 +1031,9 @@ class TaskListener(TaskConfig):
                 return error[:500] + "..."
             return error
 
+        if any(x in error_lower for x in ["drm", "widevine", "fairplay", "playready", "encrypted", "protection key", "license key", "is encrypted"]):
+            return "DRM / Encrypted content detected! Protected streams cannot be downloaded or decrypted."
+
         if any(x in error_lower for x in ["network is unreachable", "errno 101", "errno 111", "connection refused"]):
             return "Network connection failed. Server may be down or unreachable."
         if any(x in error_lower for x in ["max retries exceeded", "connectionerror", "newconnectionerror", "httpsconnectionpool", "httpconnectionpool"]):

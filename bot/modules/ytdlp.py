@@ -107,74 +107,97 @@ class YtSelection:
         if "entries" in result:
             self._is_playlist = True
             for i in ["144", "240", "360", "480", "720", "1080", "1440", "2160"]:
-                video_format = f"bv*[height<=?{i}][ext=mp4]+ba[ext=m4a]/b[height<=?{i}]"
+                video_format = f"bv*[height<=?{i}]+mergeall[vcodec=none]/bv*[height<=?{i}]+ba/b[height<=?{i}]"
                 b_data = f"{i}|mp4"
                 self.formats[b_data] = video_format
                 buttons.data_button(f"{i}-mp4", f"ytq {b_data}")
-                video_format = f"bv*[height<=?{i}][ext=webm]+ba/b[height<=?{i}]"
+                video_format = f"bv*[height<=?{i}]+mergeall[vcodec=none]/bv*[height<=?{i}]+ba/b[height<=?{i}]"
                 b_data = f"{i}|webm"
                 self.formats[b_data] = video_format
                 buttons.data_button(f"{i}-webm", f"ytq {b_data}")
             buttons.data_button("MP3", "ytq mp3")
             buttons.data_button("Audio Formats", "ytq audio")
-            buttons.data_button("Best Videos", "ytq bv*+ba/b")
+            buttons.data_button("Best Videos", "ytq bv*+mergeall[vcodec=none]/bv*+ba/b")
             buttons.data_button("Best Audios", "ytq ba/b")
             buttons.data_button("Cancel", "ytq cancel", "footer")
             self._main_buttons = buttons.build_menu(3)
             msg = f"Choose Playlist Videos Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         else:
+            audio_langs = set()
+            sub_langs = set()
+
+            subs_dict = result.get("subtitles") or {}
+            auto_subs_dict = result.get("automatic_captions") or {}
+            for lang in list(subs_dict.keys()) + list(auto_subs_dict.keys()):
+                if lang:
+                    sub_langs.add(lang)
+
             format_dict = result.get("formats")
             if format_dict is not None:
                 for item in format_dict:
-                    if item.get("tbr"):
-                        format_id = item["format_id"]
+                    lang = item.get("language") or item.get("language_preference")
+                    if lang and isinstance(lang, str) and lang != "und":
+                        audio_langs.add(lang)
 
-                        if item.get("filesize"):
-                            size = item["filesize"]
-                        elif item.get("filesize_approx"):
-                            size = item["filesize_approx"]
-                        else:
-                            size = 0
+                    format_id = item.get("format_id", "")
+                    tbr_val = item.get("tbr") or item.get("vbr") or item.get("abr") or 0
 
-                        if item.get("video_ext") == "none" and (
-                            item.get("resolution") == "audio only"
-                            or item.get("acodec") != "none"
-                        ):
-                            if item.get("audio_ext") == "m4a":
-                                self._is_m4a = True
-                            b_name = f"{item.get('acodec') or format_id}-{item['ext']}"
-                            v_format = format_id
-                        elif item.get("height"):
-                            height = item["height"]
-                            ext = item["ext"]
-                            fps = item["fps"] if item.get("fps") else ""
-                            b_name = f"{height}p{fps}-{ext}"
-                            ba_ext = (
-                                "[ext=m4a]" if self._is_m4a and ext == "mp4" else ""
-                            )
-                            v_format = f"{format_id}+ba{ba_ext}/b[height=?{height}]"
-                        else:
-                            continue
+                    if item.get("filesize"):
+                        size = item["filesize"]
+                    elif item.get("filesize_approx"):
+                        size = item["filesize_approx"]
+                    else:
+                        size = 0
 
-                        self.formats.setdefault(b_name, {})[f"{item['tbr']}"] = [
-                            size,
-                            v_format,
-                        ]
+                    if item.get("video_ext") == "none" and (
+                        item.get("resolution") == "audio only"
+                        or item.get("acodec") != "none"
+                    ):
+                        if item.get("audio_ext") == "m4a":
+                            self._is_m4a = True
+                        b_name = f"{item.get('acodec') or format_id}-{item.get('ext', 'm4a')}"
+                        v_format = format_id
+                    elif item.get("height"):
+                        height = item["height"]
+                        ext = item.get("ext", "mp4")
+                        fps = item["fps"] if item.get("fps") else ""
+                        b_name = f"{height}p{fps}-{ext}"
+                        v_format = f"{format_id}+mergeall[vcodec=none]/{format_id}+ba/b[height=?{height}]"
+                    elif item.get("resolution") or item.get("format_note"):
+                        res_str = item.get("resolution") or item.get("format_note")
+                        ext = item.get("ext", "mp4")
+                        b_name = f"{res_str}-{ext}"
+                        v_format = f"{format_id}+mergeall[vcodec=none]/{format_id}+ba/b"
+                    else:
+                        b_name = f"{format_id}-{item.get('ext', 'mp4')}"
+                        v_format = format_id
+
+                    self.formats.setdefault(b_name, {})[f"{tbr_val}"] = [
+                        size,
+                        v_format,
+                    ]
 
                 for b_name, tbr_dict in self.formats.items():
                     if len(tbr_dict) == 1:
                         tbr, v_list = next(iter(tbr_dict.items()))
-                        buttonName = f"{b_name} ({get_readable_file_size(v_list[0])})"
+                        buttonName = f"{b_name} ({get_readable_file_size(v_list[0])})" if v_list[0] > 0 else b_name
                         buttons.data_button(buttonName, f"ytq sub {b_name} {tbr}")
                     else:
                         buttons.data_button(b_name, f"ytq dict {b_name}")
             buttons.data_button("MP3", "ytq mp3")
             buttons.data_button("Audio Formats", "ytq audio")
-            buttons.data_button("Best Video", "ytq bv*+ba/b")
+            buttons.data_button("Best Video", "ytq bv*+mergeall[vcodec=none]/bv*+ba/b")
             buttons.data_button("Best Audio", "ytq ba/b")
             buttons.data_button("Cancel", "ytq cancel", "footer")
             self._main_buttons = buttons.build_menu(2)
-            msg = f"Choose Video Quality:\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+
+            track_info = ""
+            if audio_langs:
+                track_info += f"\n<b>🔊 Audio Languages:</b> {', '.join(sorted(audio_langs))}"
+            if sub_langs:
+                track_info += f"\n<b>💬 Subtitles:</b> {', '.join(sorted(sub_langs))}"
+
+            msg = f"Choose Video Quality:{track_info}\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
         self._reply_to = await send_message(
             self.listener.message, msg, self._main_buttons
         )
