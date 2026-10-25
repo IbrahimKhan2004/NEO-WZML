@@ -530,7 +530,7 @@ To add multiple fields, separate them with a pipe <code>|</code> character.
 <b>Get it from:</b> https://storage.to/account/api-tokens
 (Sign in first, then generate a token — it's shown only once, so copy it immediately)
 
-<i>Note: Token is optional. Without it, uploads still work anonymously (50 files/day, files expire in 3 days). With token: unlimited files + no daily bandwidth cap.</i>
+<i>Note: Token is optional. Without it, uploads still work anonymously (50 files/day, files expire in 7 days). With token: unlimited files + no daily bandwidth cap.</i>
  • <b>Time Left:</b> <code>60 sec</code>""",
     ),
     "DEFAULT_UPLOAD": (
