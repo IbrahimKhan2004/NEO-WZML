@@ -103,6 +103,17 @@ class StorageToUpload:
                     raise Exception(f"HTTP {resp.status}: {await resp.text()}")
                 return resp.headers.get("ETag", "")
 
+    async def __set_expiry(self, kind, rid):
+        # Set expiry to 7 days (docs: POST /file|collection/{id}/expiry, days 1-7)
+        async with ClientSession(timeout=UPLOAD_TIMEOUT) as session:
+            async with session.post(
+                f"{self.api_url}{kind}/{rid}/expiry",
+                json={"days": 7},
+                headers=self.__headers(),
+            ) as resp:
+                if resp.status not in [200, 201]:
+                    LOGGER.error(f"Expiry Failed: {await resp.text()}")
+
     async def upload_file(self, path: str, collection_id: str = ""):
         if self.listener.is_cancelled:
             return None
@@ -278,6 +289,7 @@ class StorageToUpload:
             res = await self.upload_file(self._path)
             if res and res.get("file"):
                 link = res["file"]["url"]
+                await self.__set_expiry("file", res["file"]["id"])
                 mime_type = "File"
                 self.total_files = 1
             else:
@@ -286,6 +298,7 @@ class StorageToUpload:
             collection_id = await self._upload_dir(self._path)
             if collection_id:
                 link = f"https://storage.to/c/{collection_id}"
+                await self.__set_expiry("collection", collection_id)
                 mime_type = "Folder"
                 self.total_folders = 1
             else:
