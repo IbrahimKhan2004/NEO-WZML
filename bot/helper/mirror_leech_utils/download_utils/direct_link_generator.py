@@ -383,6 +383,7 @@ def is_supported_direct_link(link: str) -> bool:
             "teltobx",
             "telbx",
             "workers.dev",
+            "r2.dev",
         ]
     ):
         return True
@@ -1478,7 +1479,7 @@ def __parse_content_disposition(content_disposition):
         return None
 
     # 1. Check for filename*= (RFC 5987 / RFC 6266)
-    if m := search(r"filename\*=\s*([^;]+)", content_disposition, flags=IGNORECASE):
+    if m := search(r"filename\*=\s*([^\s;]+)", content_disposition, flags=IGNORECASE):
         val = m.group(1).strip("\"'")
         if "''" in val:
             val = val.split("''", 1)[1]
@@ -3600,7 +3601,3 @@ def _hblinks_members(session, url):
                 quality = quality.split(separator)[0].strip()
         members.append({"name": quality or None, "size": 0, "url": chosen})
     return title, members
-
-
-
-
