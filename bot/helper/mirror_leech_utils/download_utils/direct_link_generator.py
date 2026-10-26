@@ -1478,7 +1478,7 @@ def __parse_content_disposition(content_disposition):
         return None
 
     # 1. Check for filename*= (RFC 5987 / RFC 6266)
-    if m := search(r"filename\*=\s*([^\s;]+)", content_disposition, flags=IGNORECASE):
+    if m := search(r"filename\*=\s*([^;]+)", content_disposition, flags=IGNORECASE):
         val = m.group(1).strip("\"'")
         if "''" in val:
             val = val.split("''", 1)[1]

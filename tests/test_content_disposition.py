@@ -29,6 +29,14 @@ def test_parse_content_disposition_utf8_rfc5987():
     assert __parse_content_disposition(cd) == "Dark S01 720p.zip"
 
 
+def test_parse_content_disposition_utf8_unencoded_spaces():
+    cd = "attachment; filename*=UTF-8''The Fix (2026) English 480p WEB-DL ESub [BollyFlix].mkv"
+    assert (
+        __parse_content_disposition(cd)
+        == "The Fix (2026) English 480p WEB-DL ESub [BollyFlix].mkv"
+    )
+
+
 def test_parse_content_disposition_utf8_with_lang():
     cd = "attachment; filename*=utf-8'en'Dark%20S01%20720p.zip"
     assert __parse_content_disposition(cd) == "Dark S01 720p.zip"
