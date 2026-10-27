@@ -3,6 +3,7 @@
 from os import getcwd, path as ospath
 from re import search
 from shlex import split
+from urllib.parse import unquote
 
 from aiofiles import open as aiopen
 from aiofiles.os import mkdir, path as aiopath, remove as aioremove
@@ -26,14 +27,14 @@ async def gen_mediainfo(message, link=None, media=None, mmsg=None):
             await mkdir(path)
         file_size = 0
         if link:
-            m = search(".+/(.+)", link)
+            m = search(".+/(.+)", link.split("?")[0])
             if m is None:
                 await edit_message(
                     temp_send,
                     "Could not extract a filename from that link.",
                 )
                 return
-            filename = m.group(1)
+            filename = (search(r'filename="?([^&";/]+)', unquote(link)) or m).group(1)
             des_path = ospath.join(path, filename)
             headers = {
                 "user-agent": "Mozilla/5.0 (Linux; Android 12; 2201116PI) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36"
