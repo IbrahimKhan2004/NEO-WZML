@@ -154,6 +154,7 @@ YT_DLP_OPTIONS = ""  # JSON string, e.g. '{"format": "bv*+ba/b"}'
 FILELION_API = ""
 STREAMWISH_API = ""
 INSTADL_API = ""
+TMDB_API_KEY = ""  # optional: TMDB v3 key or v4 token for Auto Thumbnail; empty = built-in scraper
 DEBRID_LINK_API = ""
 REAL_DEBRID_API = ""
 USE_PIXELDRAIN_CDN = False
