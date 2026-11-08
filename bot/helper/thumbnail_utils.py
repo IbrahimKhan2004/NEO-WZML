@@ -15,6 +15,7 @@ from aiohttp import ClientSession
 from lxml.etree import HTML
 
 from bot import LOGGER
+from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import sync_to_async
 
 
@@ -63,7 +64,52 @@ class ThumbnailFetcher:
         }
 
     @staticmethod
+    async def search_tmdb_api(query: str, year: str = None, is_tv: bool = False, season: int = None) -> str or None:
+        """TMDB API (needs TMDB_API_KEY). Priority: backdrop (en > textless > any language)
+        > season poster (TV) > poster. Returns None if the title is not on TMDB, raises on API errors."""
+        key = Config.TMDB_API_KEY
+        bearer = len(key) > 40  # v4 read token (JWT) -> header, v3 key -> query param
+        headers = {"Authorization": f"Bearer {key}"} if bearer else {}
+
+        async def get(session, path, **params):
+            if not bearer:
+                params["api_key"] = key
+            async with session.get(f"https://api.themoviedb.org/3/{path}", params=params, headers=headers, timeout=10) as resp:
+                if resp.status == 404:
+                    return {}
+                if resp.status != 200:
+                    raise RuntimeError(f"TMDB API HTTP {resp.status}")  # no raise_for_status: its message contains the key
+                return await resp.json()
+
+        def pick(images):
+            for ok in (lambda l: l == "en", lambda l: l is None, lambda l: True):
+                found = [i for i in images if ok(i.get("iso_639_1"))]
+                if found:
+                    return max(found, key=lambda i: i.get("vote_average") or 0)["file_path"]
+
+        async with ClientSession() as session:
+            for kind in (['tv', 'movie'] if is_tv else ['movie', 'tv']):
+                for try_year in ([year, None] if year else [None]):
+                    year_param = {'first_air_date_year' if kind == 'tv' else 'year': try_year} if try_year else {}
+                    results = (await get(session, f"search/{kind}", query=query, **year_param)).get('results')
+                    if not results:
+                        continue
+                    show_id = results[0]['id']
+                    path = pick((await get(session, f"{kind}/{show_id}/images")).get('backdrops', []))
+                    if not path and kind == 'tv' and season:
+                        path = pick((await get(session, f"tv/{show_id}/season/{season}/images")).get('posters', []))
+                    path = path or results[0].get('poster_path')
+                    if path:
+                        return f"{ThumbnailFetcher.TMDB_IMAGE_BASE}{path}"
+        return None
+
+    @staticmethod
     async def search_tmdb(query: str, year: str = None, is_tv: bool = False, season: int = None) -> str or None:
+        if Config.TMDB_API_KEY:
+            try:
+                return await ThumbnailFetcher.search_tmdb_api(query, year, is_tv, season)
+            except Exception as e:
+                LOGGER.error(f"TMDB API error, falling back to scraper: {e}")
         try:
             from urllib.parse import quote
 
