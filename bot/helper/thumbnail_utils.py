@@ -43,7 +43,9 @@ class ThumbnailFetcher:
         episode = ptn_result.get('episode')
         episode_name = ptn_result.get('episodeName')
 
-        is_tv = season is not None or episode is not None or bool(episode_name)
+        # PTN false-positives (group "SP1EG3L" -> season 1, "AC3 5.1 ..." -> episodeName): need a real TV marker too
+        is_tv = (season is not None or episode is not None or bool(episode_name)) and bool(
+            re.search(r'(?<![a-z0-9])(s\d{1,2}[ ._-]?e\d{1,3}|\d{1,2}x\d{2,3}|season[ ._]?\d+|episode[ ._]?\d+|s\d{1,2}|e\d{2,3})(?![a-z0-9])', base_name, re.I))
 
         # Fallback: if PTN couldn't extract a meaningful title, do basic cleaning
         if not title or len(title) < 2:
@@ -60,7 +62,7 @@ class ThumbnailFetcher:
             'name': title,
             'year': str(year) if year else None,
             'is_tv': is_tv,
-            'season': season,
+            'season': season if is_tv else None,
         }
 
     @staticmethod
