@@ -48,6 +48,7 @@ class Config:
     AUTHOR_NAME = "irisXDR"
     AUTHOR_URL = "https://github.com/irisXDR"
     INSTADL_API = ""
+    TMDB_API_KEY = ""
     INCOMPLETE_TASK_NOTIFIER = False
     INDEX_URL = ""
     IS_TEAM_DRIVE = False
