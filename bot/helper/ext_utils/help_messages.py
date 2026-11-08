@@ -1236,6 +1236,7 @@ config_descriptions = {
     "FILELION_API": "FileLion API key for premium link generation",
     "PROTECTED_API": "Protected/Securedown API key for premium links",
     "INSTADL_API": "InstaDL API key for Instagram video downloads",
+    "TMDB_API_KEY": "TMDB API key (v3) or read token (v4) for Auto Thumbnail. Optional: backdrop (English > textless > any) > season poster > poster. Empty = old scraper",
 
     "GOFILE_API": "Gofile.io API token for file uploads",
     "GOFILE_FOLDER_ID": "Gofile folder ID to organize uploads. Leave empty for root",
