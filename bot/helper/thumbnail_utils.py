@@ -199,6 +199,11 @@ class ThumbnailFetcher:
                 '//img[contains(@src, "w500_and_h282_face")]/ancestor::a[1]/@href'
             )
             if not backdrop_links:
+                backdrop_links = [
+                    l for l in html.xpath('//a[contains(@href, "/t/p/original/")]/@href')
+                    if re.search(r'\.(jpg|jpeg|png|webp)$', l, re.IGNORECASE)
+                ]
+            if not backdrop_links:
                 LOGGER.debug("TMDB no backdrop images found on gallery page")
                 return None
 
@@ -258,10 +263,7 @@ class ThumbnailFetcher:
 
         is_tv = parsed.get('is_tv', False)
         season = parsed.get('season')
-        if is_tv:
-            query = parsed['name']
-        else:
-            query = f"{parsed['name']} {parsed.get('year') or ''}".strip()
+        query = parsed['name']
 
         LOGGER.info(f"Auto-thumbnail: Searching for '{query}' (TV: {is_tv}, Season: {season}, Year: {parsed.get('year')})")
 
