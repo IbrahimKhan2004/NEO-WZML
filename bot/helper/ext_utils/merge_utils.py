@@ -13,7 +13,8 @@ from natsort import natsorted
 from bot import LOGGER, DOWNLOAD_DIR
 from bot.core.config_manager import BinConfig
 from bot.helper.ext_utils.bot_utils import sync_to_async
-from bot.helper.ext_utils.media_utils import get_streams
+from bot.helper.ext_utils.media_utils import get_media_info, get_streams
+from bot.helper.ext_utils.auto_merge_utils import _se
 
 
 VIDEO_EXTS = (".mp4", ".mkv", ".avi", ".mov", ".webm", ".ts", ".m2ts")
@@ -90,16 +91,24 @@ class MergeVideos:
             return None
 
         concat_path = ospath.join(DOWNLOAD_DIR, f"madara_{self._listener.mid}.txt")
+        chap_path = concat_path.replace(".txt", "_chap.txt")
         try:
             async with aiopen(concat_path, "w", encoding="utf-8") as f:
                 for v in videos:
                     await f.write(f"file '{self._escape_concat_path(v)}'\n")
 
+            async with aiopen(chap_path, "w", encoding="utf-8") as f:
+                await f.write(";FFMETADATA1\n")
+                t = 0
+                for n, v in enumerate(videos):
+                    t0, t = t, t + (await get_media_info(v))[0]
+                    await f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={int(t0 * 1000)}\nEND={int(t * 1000)}\ntitle=Episode {(_se(v) or (0, n + 1))[1]}\n")
+
             pics = [a for s in await get_streams(videos[0]) or [] if s.get("disposition", {}).get("attached_pic") for a in ("-map", f"-0:{s['index']}")]
             cmd = [
                 BinConfig.FFMPEG_NAME, "-hide_banner", "-loglevel", "error",
                 "-f", "concat", "-safe", "0",
-                "-i", concat_path,
+                "-i", concat_path, "-i", chap_path, "-map_chapters", "1",
                 "-map", "0", *pics, *(("-map", "-0:t") if getattr(self._listener, "auto_merge", False) else ()),
                 "-ignore_unknown",
                 "-c", "copy",
@@ -138,5 +147,6 @@ class MergeVideos:
         finally:
             try:
                 await remove(concat_path)
+                await remove(chap_path)
             except Exception:
                 pass
