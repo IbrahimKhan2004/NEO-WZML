@@ -3,7 +3,7 @@
 from asyncio import create_subprocess_exec
 from asyncio.subprocess import DEVNULL, PIPE
 from os.path import basename, splitext
-from re import IGNORECASE, compile as re_compile, escape, sub
+from re import IGNORECASE, compile as re_compile, escape, findall as re_findall, sub
 from pycountry import languages
 from bot.helper.ext_utils.media_utils import get_streams
 from bot.helper.ext_utils.native_lang import get_native_lang
@@ -144,6 +144,8 @@ class MetadataProcessor:
             for s in streams:
                 ctype = s.get("codec_type", "").lower()
                 slang = s.get("tags", {}).get("language", "unknown")
+                if slang in ("unknown", "und"):
+                    slang = next((l.alpha_3 for w in re_findall(r"[A-Za-z]+", s.get("tags", {}).get("title", "")) if (l := languages.get(name=w.capitalize()))), slang)
                 full_lang = self.convert_lang_code(slang)
                 native_lang = get_native_lang(slang, full_lang)
                 entry = {
@@ -230,7 +232,7 @@ class MetadataProcessor:
         if not isinstance(metadata_dict, dict):
             return {}
         vars_with_stream = self.vars.copy()
-        if stream_lang and stream_lang != "unknown":
+        if stream_lang:
             key = "audiolang" if stream_type == "audio" else "sublang"
             f_lang = full_lang or self.convert_lang_code(stream_lang)
             n_lang = native_lang or get_native_lang(stream_lang, f_lang)
