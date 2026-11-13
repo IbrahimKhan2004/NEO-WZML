@@ -160,7 +160,7 @@ async def apply_metadata_title(
                     maps += [f"-c:{idx}", "copy"]
 
             met_cmd += maps
-            met_cmd += ["-map_metadata", "-1"]
+            met_cmd += ["-map_metadata:g", "-1"]
             for item in meta_maps:
                 met_cmd.append(item)
             for k, v_ in meta["global"].items():
