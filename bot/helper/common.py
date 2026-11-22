@@ -827,7 +827,7 @@ class TaskConfig:
                 "Reply to text file or to telegram message that have links seperated by new line!",
             )
 
-    async def proceed_extract(self, dl_path, gid):
+    async def proceed_extract(self, dl_path, gid, depth=0):
         pswd = self.extract if isinstance(self.extract, str) else ""
         self.files_to_proceed = []
         if self.is_file and is_archive(dl_path):
@@ -877,7 +877,11 @@ class TaskConfig:
                             await remove(del_path)
                         except Exception:
                             self.is_cancelled = True
-        return t_path if self.is_file and code == 0 else dl_path
+        out = t_path if self.is_file and code == 0 else dl_path
+        if code == 0 and depth < 3:
+            self.is_file = await aiopath.isfile(out)
+            return await self.proceed_extract(out, gid, depth + 1)
+        return out
 
     async def proceed_ffmpeg(self, dl_path, gid):
         checked = False
