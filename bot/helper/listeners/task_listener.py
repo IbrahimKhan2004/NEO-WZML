@@ -326,7 +326,7 @@ class TaskListener(TaskConfig):
                 self.get_excluded_extensions_for_download(),
             )
 
-        if self.merge_video and not self.is_file and self.merge_after_extract:
+        if self.merge_video and not self.is_file and self.merge_after_extract and "merge_video" not in self.vt_order:
             up_path = await self.proceed_merge(up_path, gid)
             if self.is_cancelled:
                 return
@@ -339,86 +339,17 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        if self.advanced_merge and not self.is_file:
-            up_path = await self.proceed_advanced_merge(up_path, gid)
-            if self.is_cancelled:
-                return
-            self.is_file = False
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.auto_merge and not self.is_file:
-            up_path = await self.proceed_auto_merge(up_path, gid)
-            if self.is_cancelled:
-                return
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.remove_stream:
-            up_path = await self.proceed_remove_stream(up_path, gid)
-            if self.is_cancelled:
-                return
-            if await aiopath.isfile(up_path):
-                pdir = ospath.dirname(up_path)
-                if pdir != up_dir and await aiopath.isdir(pdir):
-                    up_path = pdir
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.add_streams:
-            up_path = await self.proceed_add_streams(up_path, gid)
-            if self.is_cancelled:
-                return
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.audio_swap or self.subtitle_swap:
-            up_path = await self.proceed_stream_swap(up_path, gid)
-            if self.is_cancelled:
-                return
-            if await aiopath.isfile(up_path):
-                pdir = ospath.dirname(up_path)
-                if pdir != up_dir and await aiopath.isdir(pdir):
-                    up_path = pdir
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.sync_streams:
-            up_path = await self.proceed_sync_streams(up_path, gid)
-            if self.is_cancelled:
-                return
-            if await aiopath.isfile(up_path):
-                pdir = ospath.dirname(up_path)
-                if pdir != up_dir and await aiopath.isdir(pdir):
-                    up_path = pdir
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.vt_convert_audio:
-            up_path = await self.proceed_convert_audio(up_path, gid)
-            if self.is_cancelled:
-                return
-            if await aiopath.isfile(up_path):
-                pdir = ospath.dirname(up_path)
-                if pdir != up_dir and await aiopath.isdir(pdir):
-                    up_path = pdir
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = ospath.basename(up_path) if self.is_file else up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.extract_stream:
-            up_path = await self.proceed_extract_stream(up_path, gid)
+        steps = {
+            "merge_video": self.proceed_merge, "advanced_merge": self.proceed_advanced_merge,
+            "auto_merge": self.proceed_auto_merge, "remove_stream": self.proceed_remove_stream,
+            "add_streams": self.proceed_add_streams, "swap": self.proceed_stream_swap,
+            "sync_streams": self.proceed_sync_streams, "convert_audio": self.proceed_convert_audio,
+            "extract_stream": self.proceed_extract_stream,
+        }
+        for step in self.vt_order:
+            if self.is_file and step in ("merge_video", "advanced_merge", "auto_merge"):
+                continue
+            up_path = await steps[step](up_path, gid)
             if self.is_cancelled:
                 return
             if await aiopath.isfile(up_path):
