@@ -191,6 +191,7 @@ class TaskConfig:
         self.subtitle_swap = False
         self.sync_streams = False
         self.add_streams = False
+        self.vt_order = []
         self.vt_convert_audio = ""
         self.vt_audio_bitrate = ""
         self.vt_audio_channel = ""
