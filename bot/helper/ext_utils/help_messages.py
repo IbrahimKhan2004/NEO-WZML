@@ -374,7 +374,7 @@ video_tool = """<b>✦ VIDEO TOOLS</b>: <code>-vt</code>
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Video Merge and Advanced Video Merge run after extract (only one can be selected); Advanced Video Merge opens a Web UI to set groups and order. Auto Merge runs after extract. Remove Stream runs after Video Merge. Add Audio/Subtitles runs after Remove Stream. Audio Swap runs after Add Audio/Subtitles. Subtitle Swap runs after Audio Swap. Sync Audio/Subtitles runs after Subtitle Swap. Convert Audio runs after Sync Audio/Subtitles. Extract Streams runs after Convert Audio and before FFmpeg commands."""
+<b>Note:</b> Archives are extracted first. Selected tools then run in the order you select them (shown as "Execution Order" in the menu) and before FFmpeg commands. Video Merge, Advanced Video Merge and Auto Merge are mutually exclusive; Advanced Video Merge opens a Web UI to set groups and order."""
 
 subtitle_swap = """<b>✦ SUBTITLE SWAP</b> (via <code>-vt</code> menu)
 
@@ -387,7 +387,7 @@ subtitle_swap = """<b>✦ SUBTITLE SWAP</b> (via <code>-vt</code> menu)
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Streams are selectable after download completes. Runs after Audio Swap and before Convert Audio."""
+<b>Note:</b> Streams are selectable after download completes. Runs in -vt selection order."""
 
 audio_swap = """<b>✦ AUDIO SWAP</b> (via <code>-vt</code> menu)
 
@@ -400,7 +400,7 @@ audio_swap = """<b>✦ AUDIO SWAP</b> (via <code>-vt</code> menu)
 <code>/leech link -vt</code>
 <code>/mirror link -vt</code>
 
-<b>Note:</b> Streams are selectable after download completes. Runs after Add Audio/Subtitles and before Convert Audio."""
+<b>Note:</b> Streams are selectable after download completes. Runs in -vt selection order."""
 
 remove_stream = """<b>✦ REMOVE STREAM</b> (via <code>-vt</code> menu)
 
@@ -413,7 +413,7 @@ remove_stream = """<b>✦ REMOVE STREAM</b> (via <code>-vt</code> menu)
 <code>/leech link -vt</code>
 <code>/unzip link -vt</code>
 
-<b>Note:</b> Streams are only selectable after the download completes. The selection is probed once (from the first file) and matched by stream type/language across every file in a batch, so it also works with unzip/zip/leech/qBittorrent tasks. Runs after Video Merge (if enabled) and before FFmpeg commands."""
+<b>Note:</b> Streams are only selectable after the download completes. The selection is probed once (from the first file) and matched by stream type/language across every file in a batch, so it also works with unzip/zip/leech/qBittorrent tasks. Runs in -vt selection order, before FFmpeg commands."""
 
 tg_links = """<b>✦ TELEGRAM LINKS</b>
 
