@@ -49,9 +49,27 @@ def _vt_menu(vstate):
     return buttons.build_menu(1)
 
 
-def _vt_text(tag, time_left):
+_TOOLS = {
+    "merge_video": "Video Merge", "advanced_merge": "Advanced Video Merge",
+    "auto_merge": "Auto Merge", "extract_stream": "Extract Streams",
+    "remove_stream": "Remove Stream", "audio_swap": "Audio Swap",
+    "subtitle_swap": "Subtitle Swap", "sync_streams": "Sync Audio/Subtitles",
+    "add_streams": "Add Audio/Subtitles", "convert_audio": "Convert Audio",
+}
+
+
+def _sync(vstate):
+    order = [k for k in vstate["order"] if vstate[k]]
+    vstate["order"] = order + [k for k in _TOOLS if vstate[k] and k not in order]
+    return vstate["order"]
+
+
+def _vt_text(tag, time_left, order):
+    steps = "\n".join(f"{i}. {_TOOLS[k]}" for i, k in enumerate(order, 1))
     return (
         f"<b>Video Tools Settings for</b> {tag}\n\n"
+        f"<b>Execution Order:</b>\n{steps or 'No tools selected yet.'}\n\n"
+        "Steps run in the order you select them.\n"
         f"<b>Timeout:</b> {round(time_left)} Seconds"
     )
 
@@ -392,6 +410,7 @@ async def edit_video_tool(client, query):
         vstate["merge_video"] = False
         vstate["merge_name"] = ""
         vstate["advanced_merge"] = False
+        vstate["auto_merge"] = False
         vstate["extract_stream"] = False
         vstate["remove_stream"] = False
         vstate["audio_swap"] = False
@@ -445,6 +464,7 @@ async def get_video_tool_settings(listener):
         "sync_streams": False,
         "add_streams": False,
         "convert_audio": False,
+        "order": [],
         "audio_format": "",
         "audio_bitrate": "",
         "audio_channel": "",
@@ -455,7 +475,7 @@ async def get_video_tool_settings(listener):
         "handler": None,
     }
     vstate["text_func"] = lambda: _vt_text(
-        tag, max(0, VT_TIMEOUT - (time() - start_time))
+        tag, max(0, VT_TIMEOUT - (time() - start_time)), _sync(vstate)
     )
     msg = await send_message(listener.message, vstate["text_func"](), _vt_menu(vstate))
     mid = msg.id
@@ -502,6 +522,7 @@ async def get_video_tool_settings(listener):
     listener.subtitle_swap = vstate["subtitle_swap"]
     listener.sync_streams = vstate["sync_streams"]
     listener.add_streams = vstate["add_streams"]
+    listener.vt_order = list(dict.fromkeys("swap" if k in ("audio_swap", "subtitle_swap") else k for k in _sync(vstate)))
     listener.vt_convert_audio = vstate["audio_format"].lower() if vstate["convert_audio"] else ""
     listener.vt_audio_bitrate = vstate["audio_bitrate"] if vstate["convert_audio"] else ""
     listener.vt_audio_channel = (
