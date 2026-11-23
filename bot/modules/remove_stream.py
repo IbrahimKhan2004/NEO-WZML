@@ -47,7 +47,6 @@ def _rs_menu(rstate):
         buttons.data_button(f"{tick}{_group_label(ctype, lang)}", f"rss tgl {idx}")
     buttons.data_button("🎵 All Audio", "rss allaudio", "f_body")
     buttons.data_button("📜 All Subtitles", "rss allsub", "f_body")
-    buttons.data_button("🔄 Reverse Selection", "rss rev", "l_body")
     buttons.data_button("Done", "rss done", "footer")
     buttons.data_button("❌ Close", "rss close", "footer")
     return buttons.build_menu(2, fb_cols=2, lb_cols=1, f_cols=2)
@@ -89,9 +88,6 @@ async def edit_remove_stream_selection(client, query):
             rstate["selected"] -= sub_idxs
         else:
             rstate["selected"] |= sub_idxs
-        await query.answer()
-    elif action == "rev":
-        rstate["selected"] = set(range(len(rstate["groups"]))) - rstate["selected"]
         await query.answer()
     elif action == "done":
         await query.answer()
