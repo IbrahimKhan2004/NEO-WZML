@@ -48,7 +48,6 @@ def _es_menu(estate):
     buttons.data_button("📜 All Subtitles", "ess allsub", "f_body")
     del_tick = "✅ " if estate["delete_video"] else ""
     buttons.data_button(f"{del_tick}🗑️ Delete Main Video", "ess delvid", "f_body")
-    buttons.data_button("🔄 Reverse Selection", "ess rev", "l_body")
     buttons.data_button("Done", "ess done", "footer")
     buttons.data_button("❌ Close", "ess close", "footer")
     return buttons.build_menu(2, fb_cols=2, lb_cols=1, f_cols=2)
@@ -93,9 +92,6 @@ async def edit_extract_stream_selection(client, query):
         await query.answer()
     elif action == "delvid":
         estate["delete_video"] = not estate["delete_video"]
-        await query.answer()
-    elif action == "rev":
-        estate["selected"] = set(range(len(estate["groups"]))) - estate["selected"]
         await query.answer()
     elif action == "done":
         await query.answer()
