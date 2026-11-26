@@ -515,7 +515,7 @@ class TelegramUploader:
 
                     self._total_files += 1
 
-                    self._prm_media = True if f_size > 2097152000 else False
+                    self._prm_media = self._listener.user_trans or f_size > 2097152000
 
                     max_size = 4194304000 if (self._prm_media and TgClient.IS_PREMIUM_USER) else 2097152000
                     if f_size > max_size:
