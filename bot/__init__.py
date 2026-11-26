@@ -31,6 +31,8 @@ from .core.config_manager import BinConfig
 getLogger("requests").setLevel(WARNING)
 getLogger("urllib3").setLevel(WARNING)
 getLogger("pyrogram").setLevel(ERROR)
+getLogger("pyrogram.methods.advanced.save_file").setLevel(WARNING)
+getLogger("pyrogram.session.session").setLevel(WARNING)
 getLogger("apscheduler").setLevel(ERROR)
 getLogger("httpx").setLevel(WARNING)
 getLogger("pymongo").setLevel(WARNING)
