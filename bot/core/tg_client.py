@@ -1,9 +1,6 @@
 # This file is a part of NEO-WZML (github.com/IbrahimKhan2004/NEO-WZML)
 
-from os import environ
 from pyrogram import Client, enums
-from pyrogram.session import Session
-import pyrogram.methods.advanced.save_file as _sf
 from asyncio import Lock, gather
 from inspect import signature
 from cryptography.fernet import Fernet, InvalidToken
@@ -11,11 +8,6 @@ from cryptography.fernet import Fernet, InvalidToken
 from bot import LOGGER, bot_cache
 from bot.core.config_manager import Config
 
-_sf.POOL_SIZE = 16
-Session.MAX_INFLIGHT_MEDIA = 10
-environ["PYROBLACK_UPLOAD_RATE_BOT"] = "330"
-environ["PYROBLACK_UPLOAD_POOL_BOT"] = "18"
-environ["PYROBLACK_UPLOAD_POOL_PREMIUM"] = "18"
 
 
 class TgClient:
